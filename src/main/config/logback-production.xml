@@ -23,6 +23,8 @@
 
     <logger name="ch.daplab.hivepartition" level="DEBUG"/>
 
+    <logger name="com.verisign.vscc.hdfs.trumpet.client.InfiniteTrumpetEventStreamer" level="TRACE"/>
+
     <root level="INFO">
         <appender-ref ref="FILE" />
     </root>

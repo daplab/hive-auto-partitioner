@@ -1,9 +1,14 @@
 package ch.daplab.hivepartition;
 
-
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -11,42 +16,59 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by hkuppuswamy on 1/7/16.
- */
-public class Partitioner {
+public class Partitioner implements AutoCloseable {
+
+    private static Logger LOG = LoggerFactory.getLogger(Partitioner.class);
 
     private static String driverName = "org.apache.hive.jdbc.HiveDriver";
 
-    public void create(String jdbcURL, String tableName, Map<String, String> partitions) throws SQLException {
-        try {
-            Class.forName(driverName);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        Connection con = DriverManager.getConnection(jdbcURL, "", "");
-        Statement stmt = con.createStatement();
+    private final HiveConf hiveConf;
+    private final String jdbcUri;
+    private final Connection connection;
 
-        StringBuilder builder = new StringBuilder("ALTER TABLE "+tableName+" ADD PARTITION (");
+    public Partitioner(Configuration conf) throws Exception {
 
-        builder.append(Joiner.on(",").withKeyValueSeparator("=").join(partitions));
-        builder.append(")");
+        hiveConf = new HiveConf();
+        hiveConf.addResource(conf);
+        URI uri = new URI(hiveConf.getVar(hiveConf, HiveConf.ConfVars.METASTOREURIS));
+        jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
-        System.out.println("Generated query : "+builder);
-        stmt.execute(builder.toString());
-        con.close();
+        Class.forName(driverName);
+        connection = DriverManager.getConnection(jdbcUri, "", "");
     }
 
-    public static void main (String[] args) throws SQLException {
+    public void create(String tableName, Map<String, String> partitionSpec, String path) throws SQLException {
+
+        try (Statement stmt = connection.createStatement()) {
+
+            StringBuilder sb = new StringBuilder("ALTER TABLE ");
+            sb.append(tableName).append(" ADD IF NOT EXISTS PARTITION (");
+
+            sb.append(Joiner.on(",").withKeyValueSeparator("=").join(partitionSpec));
+            sb.append(") LOCATION '").append(path).append("'");
+
+            LOG.warn("Generated query : {}", sb);
+
+            stmt.execute(sb.toString());
+        }
+    }
+
+    public static void main (String[] args) throws Exception {
         Preconditions.checkArgument(args.length == 5);
-        Partitioner partitioner = new Partitioner();
         Map<String, String> partitions = new HashMap();
         partitions.put("year", args[2]);
         partitions.put("month", args[3]);
         partitions.put("day", args[4]);
 
-        partitioner.create(args[0], args[1], partitions);
+        try (Partitioner partitioner = new Partitioner(new Configuration())) {
+            partitioner.create(args[1], partitions, "/tmp/1234/2345/3456");
+        }
     }
 
+    @Override
+    public void close() throws Exception {
+        if (connection != null) {
+            connection.close();
+        }
+    }
 }

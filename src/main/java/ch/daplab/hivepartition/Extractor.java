@@ -12,7 +12,7 @@ public class Extractor {
     /**
      * Returns a Map of partition_column = partition_col_value, or null if the
      */
-    public Map<String, String> getPartitionInfo(HivePartitionHolder holder, String path) {
+    public Map<String, String> getPartitionSpec(HivePartitionHolder holder, String path) {
 
         String partitionPath = path.substring(holder.getParentPath().length());
 

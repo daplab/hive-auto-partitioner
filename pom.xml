@@ -48,7 +48,7 @@
         <apache.hadoop.version>2.7.1.2.3.4.0-3485</apache.hadoop.version>
         <apache.hive.version>1.2.1.2.3.4.0-3485</apache.hive.version>
         <metrics-core.version>3.1.0</metrics-core.version>
-        <trumpet.version>2.3.0-SNAPSHOT</trumpet.version>
+        <trumpet.version>2.3.1-SNAPSHOT</trumpet.version>
 
         <!-- RPM Spec related -->
         <rpm.license>2015, DAPLAB</rpm.license>
@@ -268,6 +268,14 @@
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-jdbc</artifactId>
             <version>${apache.hive.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
         </dependency>
     </dependencies>
 
