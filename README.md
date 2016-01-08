@@ -10,7 +10,19 @@ to create hive partitions.
 This project is based on [Maven](http://maven.apache.org). To build it, you need to ensure 
 you have java and maven properly installed, and then: 
 
-```mvn clean install```
+Before building the project, you need to build Trumpet dependency.
+
+```
+git clone git@github.com:verisign/trumpet.git
+cd trumpet
+mvn clean instal -Phdp234 -DskipTests
+```
+
+Once this is complete, you can build this project:
+
+```
+mvn clean install
+```
 
 And you can directly import the project in most of the IDE, too.
 
