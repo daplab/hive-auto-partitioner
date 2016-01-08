@@ -1,10 +1,17 @@
 package ch.daplab.hivepartition.dto;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
 public class HivePartitionDTO {
 
-    final String tableName;
-    final String parentPath;
-    final String pattern;
+    @JsonProperty
+    private String tableName;
+    @JsonProperty
+    private String parentPath;
+    @JsonProperty
+    private String pattern;
+
+    public HivePartitionDTO() {}
 
     public HivePartitionDTO(String tableName, String parentPath, String pattern) {
         this.tableName = tableName;
