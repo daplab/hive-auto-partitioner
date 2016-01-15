@@ -3,16 +3,5 @@
     "tableName": "default.test123",
     "parentPath": "/tmp/test123/",
     "pattern": "{p1}/{p2}"
-  },
-  {
-    "tableName": "mydb.foobar",
-    "parentPath": "/home/user1/foobar/",
-    "pattern": "{year}/{month}/{day}"
-  },
-  {
-    "tableName": "default.test-ambari-qa-table",
-    "parentPath": "/tmp/hive/ambari-qa/",
-    "pattern": "{uuid}/_tmp_space.db"
   }
 ]
-
