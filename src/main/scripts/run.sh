@@ -55,9 +55,8 @@ MX=2048m
 JAVA_OPTS="${JAVA_OPTS} -Xms$MS -Xmx$MX -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
 JAVA_OPTS="${JAVA_OPTS} -XX:-CMSConcurrentMTEnabled -XX:CMSInitiatingOccupancyFraction=70"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CMSParallelRemarkEnabled -XX:+DoEscapeAnalysis"
-JAVA_OPTS="${JAVA_OPTS} -Dlogback.configurationFile=$CONFDIR/logback-production.xml"
 
-#HADOOP_OPTS="${HADOOP_OPTS} -Dlog4j.configuration=log4j-production.properties"
+HADOOP_OPTS="${HADOOP_OPTS} -Dlog4j.configuration=log4j-production.properties"
 #HADOOP_OPTS="${HADOOP_OPTS} -Dmapreduce.job.user.classpath.first=true"
 
 export HADOOP_CLASSPATH="$OUR_CLASSPATH:/etc/hive/conf"
