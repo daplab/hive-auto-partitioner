@@ -45,7 +45,7 @@ public class Partitioner implements AutoCloseable {
 
             sb.append("`");
             Joiner.on("`.`").appendTo(sb, tableName.split("\\."));
-            sb.append(tableName).append("` ADD IF NOT EXISTS PARTITION (`");
+            sb.append("` ADD IF NOT EXISTS PARTITION (`");
 
             Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
             sb.append("') LOCATION '").append(path).append("'");
