@@ -30,6 +30,14 @@ And you can directly import the project in most of the IDE, too.
 
 
 
+```
+create table `default`.`test123` (
+  col1              string,
+  col2              int
+)
+partitioned by (p1 string, p2 string) LOCATION '/tmp/test123/';
+```
+
 # Contributing to trumpet <a id="Contributing"></a>
 
 Code contributions, bug reports, feature requests etc. are all welcome.

@@ -34,7 +34,7 @@ public class Partitioner implements AutoCloseable {
         jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
         Class.forName(driverName);
-        connection = DriverManager.getConnection(jdbcUri, "", "");
+        connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
     }
 
     public void create(String tableName, Map<String, String> partitionSpecs, String path) throws SQLException {
