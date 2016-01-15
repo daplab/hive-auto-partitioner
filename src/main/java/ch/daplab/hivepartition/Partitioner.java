@@ -37,19 +37,22 @@ public class Partitioner implements AutoCloseable {
         connection = DriverManager.getConnection(jdbcUri, "", "");
     }
 
-    public void create(String tableName, Map<String, String> partitionSpec, String path) throws SQLException {
+    public void create(String tableName, Map<String, String> partitionSpecs, String path) throws SQLException {
 
         try (Statement stmt = connection.createStatement()) {
 
             StringBuilder sb = new StringBuilder("ALTER TABLE ");
-            sb.append(tableName).append(" ADD IF NOT EXISTS PARTITION (");
 
-            sb.append(Joiner.on(",").withKeyValueSeparator("=").join(partitionSpec));
-            sb.append(") LOCATION '").append(path).append("'");
+            sb.append("`");
+            Joiner.on("`.`").appendTo(sb, tableName.split("\\."));
+            sb.append(tableName).append("` ADD IF NOT EXISTS PARTITION (`");
+
+            Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
+            sb.append("') LOCATION '").append(path).append("'");
 
             LOG.warn("Generated query : {}", sb);
 
-            stmt.execute(sb.toString());
+            //stmt.execute(sb.toString());
         }
     }
 
