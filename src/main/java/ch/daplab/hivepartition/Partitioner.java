@@ -52,7 +52,9 @@ public class Partitioner implements AutoCloseable {
 
             LOG.warn("Generated query : {}", sb);
 
-            //stmt.execute(sb.toString());
+            stmt.execute(sb.toString());
+        } catch (org.apache.hive.service.cli.HiveSQLException e) {
+            LOG.warn("Got a HiveSQLException", e);
         }
     }
 

@@ -61,7 +61,7 @@ HADOOP_OPTS="${HADOOP_OPTS} -Dlog4j.configuration=log4j-production.properties"
 
 export HADOOP_CLASSPATH="$OUR_CLASSPATH:/etc/hive/conf"
 export HADOOP_OPTS="${JAVA_OPTS} ${HADOOP_OPTS}"
-#export YARN_OPTS="${JAVA_OPTS} ${HADOOP_OPTS}"
+export YARN_OPTS="${JAVA_OPTS} ${HADOOP_OPTS}"
 
 command="yarn jar $LIBDIR/hive-auto-partitioner.jar ch.daplab.hivepartition.HiveAutoPartitionerCli"
 
