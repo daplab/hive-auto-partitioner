@@ -57,6 +57,14 @@ public class ExtractorTest {
         String path8 = parentPath + "abcd";
 
         System.out.println(extractor.getPartitionSpec(init(tableName, parentPath, pattern8), path8));
+
+
+        String pattern9 = "{year}/{month}/{day}";
+        String path9 = parentPath + "2016/01/07/file.txt";
+
+        System.out.println(extractor.getPartitionSpec(init(tableName, parentPath, pattern9), path9));
+
+
     }
 
     public HivePartitionHolder init(String tableNAme, String parentPath, String pattern) {

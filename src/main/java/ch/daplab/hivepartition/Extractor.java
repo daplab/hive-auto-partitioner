@@ -32,6 +32,19 @@ public class Extractor {
             partitionSpec.put(partitionColumn, partitionColumnValue);
         }
 
-        return partitionSpec;
+        if (allFolders(partitionSpec)) {
+            return partitionSpec;
+        } else {
+            return null;
+        }
+    }
+
+    private boolean allFolders(Map<String, String> partitionSpec) {
+        for (String value: partitionSpec.values()) {
+            if (value == null || value.contains("/")) {
+                return false;
+            }
+        }
+        return true;
     }
 }

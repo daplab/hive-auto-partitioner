@@ -27,7 +27,7 @@ public class HivePartitionHolder {
             String group = matcher1.group(0);
             String partitionColumn = group.substring(1, group.length() - 1);
             partitionColumns.add(partitionColumn);
-            tmpPattern = tmpPattern.replace(group, "(?<" + partitionColumn + ">.*)");
+            tmpPattern = tmpPattern.replace(group, "(?<" + partitionColumn + ">.*?)");
         }
 
         pattern = Pattern.compile(tmpPattern);

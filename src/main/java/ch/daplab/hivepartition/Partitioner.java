@@ -30,7 +30,7 @@ public class Partitioner implements AutoCloseable {
 
         hiveConf = new HiveConf();
         hiveConf.addResource(conf);
-        URI uri = new URI(hiveConf.getVar(hiveConf, HiveConf.ConfVars.METASTOREURIS));
+        URI uri = new URI(hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
         jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
         Class.forName(driverName);
@@ -49,6 +49,27 @@ public class Partitioner implements AutoCloseable {
 
             Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
             sb.append("') LOCATION '").append(path).append("'");
+
+            LOG.warn("Generated query : {}", sb);
+
+            stmt.execute(sb.toString());
+        } catch (org.apache.hive.service.cli.HiveSQLException e) {
+            LOG.warn("Got a HiveSQLException", e);
+        }
+    }
+
+    public void delete(String tableName, Map<String, String> partitionSpecs) throws SQLException {
+
+        try (Statement stmt = connection.createStatement()) {
+
+            StringBuilder sb = new StringBuilder("ALTER TABLE ");
+
+            sb.append("`");
+            Joiner.on("`.`").appendTo(sb, tableName.split("\\."));
+            sb.append("` DROP IF EXISTS PARTITION (`");
+
+            Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
+            sb.append("')");
 
             LOG.warn("Generated query : {}", sb);
 
