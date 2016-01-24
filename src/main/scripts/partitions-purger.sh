@@ -18,9 +18,9 @@ table=$1
 hive -e "show partitions ${table}" | while read line;
 do
   spec=$(echo $line | sed -e "s/\//',/g" -e "s/=/='/g");
-  echo "-->$spec'<--";
+  echo "-->Partition spec: ${spec}'<--";
   hdfslocation=$(hive -e "describe formatted ${table} partition(${spec}')" | grep "Location:" | sed -e "s/Location:\s*//");
-  hdfs dfs -test -d $hdfslocation || echo "ALTER TABLE ${table} DROP PARTITION(${spec}');" | tee -a /tmp/hive-sync-${table};
+  hdfs dfs -test -d $hdfslocation 2>/dev/null || echo "ALTER TABLE ${table} DROP PARTITION(${spec}');" | tee -a /tmp/hive-sync-${table};
 done
 
 echo "Here is all the DDL commands to run to purge partitions for table ${table}"
