@@ -130,6 +130,28 @@ hdfs dfs -mkdir -p /tmp/test123/value-for-p1/another-value-for-p2/
 
 This will create a partition `(p1 = value-for-p1, p2 = 'another-value-for-p2')`. That's as easy as that!
 
+# Tools
+
+Few tools are available to initialize and purge the partitions
+ 
+## Create partition for every matching folders
+
+If hive-auto-partitioner is setup on a folder with already existing sub-folders, only partition on the *new*
+folders will be created, not on the existing one. A tool to create partitions on existing folders is thus
+provided to fill up the gap:
+
+```
+sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-init.sh \
+  --topic trumpet \
+  --zk.connect daplab-wn-22.fri.lan:2181,daplab-wn-25.fri.lan:2181,daplab-wn-33.fri.lan:2181 \
+  --configFile /opt/daplab/hive-auto-partitioner/config/hive-partitions.json
+```
+
+## Delete partitions on non-existing HDFS folder
+
+Another script is provided which is checking that every partition location actually exists.
+
+
 
 # Contributing to Hive-Auto-Partitioner <a id="Contributing"></a>
 
@@ -141,10 +163,10 @@ for how to send patches and pull requests to hive-auto-partitioner.
 And if you find cool writing such piece of software, join us every Thursday evening for our weekly [Hacky Thursdays](http://daplab.ch/#hacky)!
 
 
-## TODO
+# TODO
 
-* Delete partition: one of the first missing feature is to properly delete the partitions once the folder is deleted. This
-  most tricky part is that HDFS delete event does not embed the inode type, i.e. if the
+* Delete partition: This is partially implemented, but do only function when folders are deleted with `--skipTrash`.
+  The most tricky part is that HDFS delete event does not embed the inode type, i.e. if the
   path deleted is a file or a folder. The partition should obviously be deleted when the
   folder is removed.
 * Delayed partition creation: sometime it would be better to create the partition when
