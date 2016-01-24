@@ -3,5 +3,10 @@
     "tableName": "default.test123",
     "parentPath": "/tmp/test123/",
     "pattern": "{p1}/{p2}"
+  },
+  {
+    "tableName": "default.zefix_sogc",
+    "parentPath": "/shared/zefix/sogc/",
+    "pattern": "{year}/{month}/{day}"
   }
 ]

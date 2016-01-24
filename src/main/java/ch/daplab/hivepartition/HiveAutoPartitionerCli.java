@@ -64,6 +64,8 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
         connectableObservable.subscribe(createPartitionObserver);
         connectableObservable.subscribe(deletePartitionObserver);
 
+        connectableObservable.connect();
+
         return 0;
     }
 
