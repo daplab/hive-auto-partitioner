@@ -4,10 +4,7 @@ import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
 import com.verisign.vscc.hdfs.trumpet.AbstractAppLauncher;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.util.ToolRunner;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -49,12 +46,16 @@ public class HivePartitionsSynchCli extends AbstractAppLauncher {
         for (HivePartitionDTO dto: hivePartitionDTOs) {
             HivePartitionHolder holder = new HivePartitionHolder(dto);
 
-            RemoteIterator<LocatedFileStatus> i = fs.listFiles(new Path(holder.getParentPath()), true);
+            String wildcardPath = holder.getUserPattern();
+            for (String partitionName: holder.getPartitionColumns()) {
+                wildcardPath = wildcardPath.replace("{" + partitionName + "}", "*");
+            }
 
-            while (i.hasNext()) {
-                LocatedFileStatus locatedFileStatus = i.next();
-                String path = locatedFileStatus.getPath().toString();
-                if (locatedFileStatus.isDirectory()) {
+            FileStatus[] statuses = fs.globStatus(new Path(holder.getParentPath() + wildcardPath));
+
+            for (FileStatus status: statuses) {
+                String path = status.getPath().toUri().getPath();
+                if (status.isDirectory()) {
                     Map<String, String> partitionSpec = extractor.getPartitionSpec(holder, path);
                     if (partitionSpec != null) {
                         partitioner.create(holder.getTableName(), partitionSpec, path);
