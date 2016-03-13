@@ -77,10 +77,10 @@ public class HivePartitionsPurgeCli extends AbstractAppLauncher {
                 while (rs.next()) {
                     String partition = rs.getString(1);
 
-                    partition = partition.replace("/", "',").replace("=", "'=");
+                    partition = partition.replace("/", "',`").replace("=", "`='");
                     StringBuilder partitionSb = new StringBuilder("describe formatted ");
                     partitionSb.append(Helper.escapeTableName(dto.getTableName()));
-                    partitionSb.append(" partition(");
+                    partitionSb.append(" partition(`");
                     partitionSb.append(partition);
                     partitionSb.append("')");
 
@@ -100,7 +100,7 @@ public class HivePartitionsPurgeCli extends AbstractAppLauncher {
                             if (!isDir) {
                                 StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
                                 alterSb.append(Helper.escapeTableName(dto.getTableName()));
-                                alterSb.append(" DROP PARTITION(");
+                                alterSb.append(" DROP PARTITION(`");
                                 alterSb.append(partition);
                                 alterSb.append("')");
                                 System.out.println(alterSb.toString());

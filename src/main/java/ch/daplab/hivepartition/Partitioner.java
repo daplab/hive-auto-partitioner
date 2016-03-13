@@ -1,5 +1,6 @@
 package ch.daplab.hivepartition;
 
+import ch.daplab.hivepartition.dto.Helper;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
@@ -43,10 +44,8 @@ public class Partitioner implements AutoCloseable {
 
             StringBuilder sb = new StringBuilder("ALTER TABLE ");
 
-            sb.append("`");
-            Joiner.on("`.`").appendTo(sb, tableName.split("\\."));
-            sb.append("` ADD IF NOT EXISTS PARTITION (`");
-
+            sb.append(Helper.escapeTableName(tableName));
+            sb.append(" ADD IF NOT EXISTS PARTITION (`");
             Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
             sb.append("') LOCATION '").append(path).append("'");
 
@@ -64,9 +63,8 @@ public class Partitioner implements AutoCloseable {
 
             StringBuilder sb = new StringBuilder("ALTER TABLE ");
 
-            sb.append("`");
-            Joiner.on("`.`").appendTo(sb, tableName.split("\\."));
-            sb.append("` DROP IF EXISTS PARTITION (`");
+            sb.append(Helper.escapeTableName(tableName));
+            sb.append(" DROP IF EXISTS PARTITION (`");
 
             Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
             sb.append("')");
