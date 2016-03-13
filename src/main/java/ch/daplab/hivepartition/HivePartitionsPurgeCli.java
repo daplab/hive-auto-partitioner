@@ -5,15 +5,22 @@ import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
 import com.google.common.base.Joiner;
 import com.verisign.vscc.hdfs.trumpet.AbstractAppLauncher;
+import joptsimple.OptionException;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
 import java.net.URI;
 import java.sql.Connection;
@@ -24,13 +31,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HivePartitionsPurgeCli extends AbstractAppLauncher {
-
-    public static final String OPTION_CONFIG_FILE_FILE = "configFile";
+public class HivePartitionsPurgeCli implements Tool {
 
     private static String driverName = "org.apache.hive.jdbc.HiveDriver";
 
+    protected static final String OPTION_CONFIG_FILE_FILE = "configFile";
+    protected static final String OPTION_HELP = "help";
+    protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
+    private final OptionParser parser = new OptionParser();
+    private Configuration conf;
+
     private final ObjectMapper mapper = new ObjectMapper();
+    private OptionSet options;
+    
+    protected final OptionSet getOptions() {
+        return this.options;
+    }
+    protected final OptionParser getParser() { return this.parser; }
+    public final Configuration getConf() {
+        return this.conf;
+    }
+    public final void setConf(Configuration configuration) {
+        this.conf = configuration;
+    }
 
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new HivePartitionsPurgeCli(), args);
@@ -38,92 +61,124 @@ public class HivePartitionsPurgeCli extends AbstractAppLauncher {
     }
 
     @Override
-    protected int internalRun() throws Exception {
+    public final int run(String[] args) throws Exception {
+        this.initParser();
+        boolean invalidOptions = false;
 
-        String configFile = (String) getOptions().valueOf(OPTION_CONFIG_FILE_FILE);
-
-        File f = new File(configFile);
-
-        if (!f.isFile() && !f.canRead()) {
-            System.err.println("Configuration file " + configFile + " cannot be read. Please correct point to the right configuration file " +
-                    "via --" + OPTION_CONFIG_FILE_FILE);
-            return ReturnCode.GENERIC_WRONG_CONFIG;
+        try {
+            this.options = this.getParser().parse(args);
+        } catch (OptionException e) {
+            invalidOptions = true;
+            System.err.println("Invalid argument: " + e.getMessage());
+            System.err.println("Run with --help for help.");
         }
 
-        List<HivePartitionDTO> hivePartitionDTOs = mapper.readValue(f, new TypeReference<List<HivePartitionDTO>>() {});
+        if(invalidOptions || this.options.has(OPTION_HELP)) {
+            this.getParser().printHelpOn(System.out);
+            return ReturnCode.HELP;
+        } else {
 
-        FileSystem fs = FileSystem.get(getConf());
+            String configFile = (String) getOptions().valueOf(OPTION_CONFIG_FILE_FILE);
 
-        final HiveConf hiveConf;
-        final String jdbcUri;
-        final Connection connection;
+            File f = new File(configFile);
 
-        hiveConf = new HiveConf();
-        hiveConf.addResource(getConf());
-        URI uri = new URI(hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
-        jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
+            if (!f.isFile() && !f.canRead()) {
+                System.err.println("Configuration file " + configFile + " cannot be read. Please correct point to the right configuration file " +
+                        "via --" + OPTION_CONFIG_FILE_FILE);
+                return ReturnCode.GENERIC_WRONG_CONFIG;
+            }
 
-        Class.forName(driverName);
-        connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
+            List<HivePartitionDTO> hivePartitionDTOs = mapper.readValue(f, new TypeReference<List<HivePartitionDTO>>() {
+            });
 
-        for (HivePartitionDTO dto: hivePartitionDTOs) {
+            FileSystem fs = FileSystem.get(getConf());
 
-            try (Statement stmt = connection.createStatement()) {
-                StringBuilder sb = new StringBuilder("show partitions ");
-                sb.append(Helper.escapeTableName(dto.getTableName()));
-                ResultSet rs = stmt.executeQuery(sb.toString());
-                int partitionCount = 0;
-                int  deletePartitionCount = 0;
-                while (rs.next()) {
-                    String partition = rs.getString(1);
+            final HiveConf hiveConf;
+            final String jdbcUri;
+            final Connection connection;
 
-                    partition = partition.replace("/", "',`").replace("=", "`='");
-                    StringBuilder partitionSb = new StringBuilder("describe formatted ");
-                    partitionSb.append(Helper.escapeTableName(dto.getTableName()));
-                    partitionSb.append(" partition(`");
-                    partitionSb.append(partition);
-                    partitionSb.append("')");
+            hiveConf = new HiveConf();
+            hiveConf.addResource(getConf());
+            URI uri = new URI(hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
+            jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
-                    System.out.println("Partition query = " + partitionSb.toString());
-                    ResultSet partitionRs = stmt.executeQuery(partitionSb.toString());
+            Class.forName(driverName);
+            connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
 
-                    while (partitionRs.next()) {
-                        String line = partitionRs.getString(1);
+            for (HivePartitionDTO dto : hivePartitionDTOs) {
 
-                        if (line.startsWith("Location:")) {
-                            String location = line.split(":")[1].trim();
+                try (Statement stmt = connection.createStatement()) {
+                    StringBuilder sb = new StringBuilder("show partitions ");
+                    sb.append(Helper.escapeTableName(dto.getTableName()));
+                    ResultSet rs = stmt.executeQuery(sb.toString());
+                    int partitionCount = 0;
+                    int deletePartitionCount = 0;
+                    while (rs.next()) {
+                        String partition = rs.getString(1);
 
-                            Path p = new Path(location);
-                            boolean isDir = fs.isDirectory(p);
-                            System.out.println(p + " is dir? " + isDir);
+                        partition = partition.replace("/", "',`").replace("=", "`='");
+                        StringBuilder partitionSb = new StringBuilder("describe formatted ");
+                        partitionSb.append(Helper.escapeTableName(dto.getTableName()));
+                        partitionSb.append(" partition(`");
+                        partitionSb.append(partition);
+                        partitionSb.append("')");
 
-                            if (!isDir) {
-                                StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
-                                alterSb.append(Helper.escapeTableName(dto.getTableName()));
-                                alterSb.append(" DROP PARTITION(`");
-                                alterSb.append(partition);
-                                alterSb.append("')");
-                                System.out.println(alterSb.toString());
+                        System.out.println("Partition query = " + partitionSb.toString());
+                        ResultSet partitionRs = stmt.executeQuery(partitionSb.toString());
+
+                        while (partitionRs.next()) {
+                            String line = partitionRs.getString(1);
+
+                            if (line.startsWith("Location:")) {
+                                String location = line.replaceAll("Location:\\s*", "").trim();
+
+                                Path p = new Path(location);
+                                boolean isDir = fs.isDirectory(p);
+                                System.out.println(p + " is dir? " + isDir);
+
+                                if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
+                                    System.out.println("Warning: partition " + p + " seems to be outside of the table parent folder " + dto.getParentPath());
+                                }
+
+                                if (!isDir) {
+                                    StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
+                                    alterSb.append(Helper.escapeTableName(dto.getTableName()));
+                                    alterSb.append(" DROP PARTITION(`");
+                                    alterSb.append(partition);
+                                    alterSb.append("')");
+                                    System.out.println("DROP stale partition: " + alterSb.toString());
 //                                stmt.execute(alterSb.toString());
-                                deletePartitionCount++;
+                                    deletePartitionCount++;
+                                }
+                                break;
                             }
-                            break;
                         }
                     }
+
+                    System.out.println("" + partitionCount + " partitions found, " + deletePartitionCount + " partitions deleted");
+
+                } catch (org.apache.hive.service.cli.HiveSQLException e) {
+                    LOG.warn("Got a HiveSQLException", e);
                 }
-
-                System.out.println("" + partitionCount + " partitions found, " + deletePartitionCount + " partitions deleted");
-
-            } catch (org.apache.hive.service.cli.HiveSQLException e) {
-                LOG.warn("Got a HiveSQLException", e);
             }
         }
-
-        return 0;
+        return ReturnCode.ALL_GOOD;
     }
 
     protected void initParser() {
         getParser().accepts(OPTION_CONFIG_FILE_FILE, "Local path to the configuration file.")
                 .withRequiredArg().required();
+        getParser().accepts("help", "Print this help").isForHelp();
+
+    }
+
+    protected class ReturnCode {
+        public static final int ALL_GOOD = 0;
+        public static final int HELP = 1;
+        public static final int GENERIC_ERROR = 1;
+        public static final int GENERIC_WRONG_CONFIG = 3;
+
+        protected ReturnCode() {
+        }
     }
 }
