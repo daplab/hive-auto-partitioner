@@ -95,7 +95,9 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                                 alterSb.append(partition);
                                 alterSb.append("')");
                                 LOG.info("DROP stale partition: {}", alterSb);
-                                stmt.execute(alterSb.toString());
+                                try (Statement deleteStmt = connection.createStatement()) {
+                                    deleteStmt.execute(alterSb.toString());
+                                }
                                 deletePartitionCount++;
                             }
                             break;
