@@ -28,6 +28,7 @@ public class HivePartitionHolder {
             String partitionColumn = group.substring(1, group.length() - 1);
             partitionColumns.add(partitionColumn);
             tmpPattern = tmpPattern.replace(group, "(?<" + partitionColumn + ">.*?)");
+            // Note: .*? means non greedy matching.
         }
 
         pattern = Pattern.compile(tmpPattern);
