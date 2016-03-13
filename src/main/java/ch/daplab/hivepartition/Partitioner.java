@@ -45,9 +45,9 @@ public class Partitioner implements AutoCloseable {
             StringBuilder sb = new StringBuilder("ALTER TABLE ");
 
             sb.append(Helper.escapeTableName(tableName));
-            sb.append(" ADD IF NOT EXISTS PARTITION (`");
-            Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
-            sb.append("') LOCATION '").append(path).append("'");
+            sb.append(" ADD IF NOT EXISTS PARTITION (");
+            sb.append(Helper.escapePartitionSpecs(partitionSpecs));
+            sb.append(") LOCATION '").append(path).append("'");
 
             LOG.warn("Generated query : {}", sb);
 
@@ -64,10 +64,9 @@ public class Partitioner implements AutoCloseable {
             StringBuilder sb = new StringBuilder("ALTER TABLE ");
 
             sb.append(Helper.escapeTableName(tableName));
-            sb.append(" DROP IF EXISTS PARTITION (`");
-
-            Joiner.on("',`").withKeyValueSeparator("`='").appendTo(sb, partitionSpecs);
-            sb.append("')");
+            sb.append(" DROP IF EXISTS PARTITION (");
+            sb.append(Helper.escapePartitionSpecs(partitionSpecs));
+            sb.append(")");
 
             LOG.warn("Generated query : {}", sb);
 

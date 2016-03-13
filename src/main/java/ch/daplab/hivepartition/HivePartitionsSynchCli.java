@@ -13,11 +13,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-public class HivePartitionsSynchCli extends AbstractAppLauncher {
-
-    public static final String OPTION_CONFIG_FILE_FILE = "configFile";
-
-    private final ObjectMapper mapper = new ObjectMapper();
+public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new HivePartitionsSynchCli(), args);
@@ -27,23 +23,11 @@ public class HivePartitionsSynchCli extends AbstractAppLauncher {
     @Override
     protected int internalRun() throws Exception {
 
-        String configFile = (String) getOptions().valueOf(OPTION_CONFIG_FILE_FILE);
-
-        File f = new File(configFile);
-
-        if (!f.isFile() && !f.canRead()) {
-            System.err.println("Configuration file " + configFile + " cannot be read. Please correct point to the right configuration file " +
-                    "via --" + OPTION_CONFIG_FILE_FILE);
-            return ReturnCode.GENERIC_WRONG_CONFIG;
-        }
-
-        List<HivePartitionDTO> hivePartitionDTOs = mapper.readValue(f, new TypeReference<List<HivePartitionDTO>>() {});
-
         Extractor extractor = new Extractor();
         Partitioner partitioner = new Partitioner(getConf());
         FileSystem fs = FileSystem.get(getConf());
 
-        for (HivePartitionDTO dto: hivePartitionDTOs) {
+        for (HivePartitionDTO dto: getHivePartitionDTOs()) {
             HivePartitionHolder holder = new HivePartitionHolder(dto);
 
             String wildcardPath = holder.getUserPattern();
@@ -64,7 +48,7 @@ public class HivePartitionsSynchCli extends AbstractAppLauncher {
             }
         }
 
-        return 0;
+        return ReturnCode.ALL_GOOD;
     }
 
     protected void initParser() {
