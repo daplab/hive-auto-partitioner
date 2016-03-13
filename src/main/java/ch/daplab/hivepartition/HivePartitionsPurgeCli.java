@@ -73,24 +73,19 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                     partitionSb.append(partition);
                     partitionSb.append("')");
 
-                    System.out.println("Partition query = " + partitionSb.toString());
+                    LOG.debug("Partition query = {}", partitionSb);
+
                     ResultSet partitionRs = stmt.executeQuery(partitionSb.toString());
 
                     while (partitionRs.next()) {
                         String line = partitionRs.getString(1);
 
                         if (line.startsWith("Location:")) {
-                            System.out.println("Location1:" + line);
-
                             String location = partitionRs.getString(2);
-                            System.out.println("Location1:" + location);
-
                             Path p = new Path(location);
                             boolean isDir = fs.isDirectory(p);
-                            System.out.println(p + " is dir? " + isDir);
-
                             if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
-                                System.out.println("Warning: partition " + p + " seems to be outside of the table parent folder " + dto.getParentPath());
+                                LOG.warn("Warning: partition {} seems to be outside of the table parent folder {}", p, dto.getParentPath());
                             }
 
                             if (!isDir) {
@@ -99,8 +94,8 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                                 alterSb.append(" DROP PARTITION(`");
                                 alterSb.append(partition);
                                 alterSb.append("')");
-                                System.out.println("DROP stale partition: " + alterSb.toString());
-//                                stmt.execute(alterSb.toString());
+                                LOG.info("DROP stale partition: {}", alterSb);
+                                stmt.execute(alterSb.toString());
                                 deletePartitionCount++;
                             }
                             break;

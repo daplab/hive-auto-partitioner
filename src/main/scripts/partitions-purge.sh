@@ -56,7 +56,7 @@ JAVA_OPTS="${JAVA_OPTS} -Xms$MS -Xmx$MX -XX:+UseParNewGC -XX:+UseConcMarkSweepGC
 JAVA_OPTS="${JAVA_OPTS} -XX:-CMSConcurrentMTEnabled -XX:CMSInitiatingOccupancyFraction=70"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CMSParallelRemarkEnabled -XX:+DoEscapeAnalysis"
 
-HADOOP_OPTS="${HADOOP_OPTS} -Dlog4j.configuration=log4j-production.properties"
+HADOOP_OPTS="${HADOOP_OPTS} -Dlog4j.configuration=log4j.properties"
 #HADOOP_OPTS="${HADOOP_OPTS} -Dmapreduce.job.user.classpath.first=true"
 
 export HADOOP_CLASSPATH="$OUR_CLASSPATH:/etc/hive/conf"
