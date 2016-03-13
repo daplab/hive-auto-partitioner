@@ -80,7 +80,10 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                         String line = partitionRs.getString(1);
 
                         if (line.startsWith("Location:")) {
+                            System.out.println("Location1:" + line);
+
                             String location = line.replaceAll("Location:\\s*", "").trim();
+                            System.out.println("Location1:" + location);
 
                             Path p = new Path(location);
                             boolean isDir = fs.isDirectory(p);
