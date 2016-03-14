@@ -24,7 +24,7 @@ The configuration file is reflecting these attributes the following:
 
 ```
   {
-    "tableName": "default.my_hive_table",
+    "tableName": "bperroud.my_hive_table",
     "parentPath": "/user/bperroud/myhivefolder/",
     "pattern": "{year}/{month}/{day}"
   }
