@@ -67,6 +67,7 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                 int deletePartitionCount = 0;
                 while (rs.next()) {
                     String partition = rs.getString(1);
+                    partitionCount++;
 
                     partition = partition.replace("/", "',`").replace("=", "`='");
                     StringBuilder partitionSb = new StringBuilder("describe formatted ");
@@ -77,34 +78,36 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
 
                     LOG.debug("Partition query = {}", partitionSb);
 
-                    ResultSet partitionRs = stmt.executeQuery(partitionSb.toString());
+                    try (Statement partitionStmt = connection.createStatement()) {
 
-                    while (partitionRs.next()) {
-                        partitionCount++;
-                        String line = partitionRs.getString(1);
+                        ResultSet partitionRs = partitionStmt.executeQuery(partitionSb.toString());
 
-                        if (line.startsWith("Location:")) {
-                            String location = partitionRs.getString(2);
-                            Path p = new Path(location);
-                            boolean isDir = fs.isDirectory(p);
-                            if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
-                                LOG.warn("Warning: partition {} seems to be outside of the table parent folder {}", p, dto.getParentPath());
+                        while (partitionRs.next()) {
+                            String line = partitionRs.getString(1);
+
+                            if (line.startsWith("Location:")) {
+                                String location = partitionRs.getString(2);
+                                Path p = new Path(location);
+                                boolean isDir = fs.isDirectory(p);
+                                if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
+                                    LOG.warn("Warning: partition {} seems to be outside of the table parent folder {}", p, dto.getParentPath());
+                                }
+
+                                if (!isDir) {
+                                    StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
+                                    alterSb.append(Helper.escapeTableName(dto.getTableName()));
+                                    alterSb.append(" DROP PARTITION(`");
+                                    alterSb.append(partition);
+                                    alterSb.append("')");
+                                    System.out.println("DROP stale partition: " + alterSb.toString());
+                                    LOG.info("DROP stale partition: {}", alterSb);
+                                    //                                try (Statement deleteStmt = connection.createStatement()) {
+                                    //                                    deleteStmt.execute(alterSb.toString());
+                                    //                                }
+                                    deletePartitionCount++;
+                                }
+                                break;
                             }
-
-                            if (!isDir) {
-                                StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
-                                alterSb.append(Helper.escapeTableName(dto.getTableName()));
-                                alterSb.append(" DROP PARTITION(`");
-                                alterSb.append(partition);
-                                alterSb.append("')");
-                                System.out.println("DROP stale partition: " + alterSb.toString());
-                                LOG.info("DROP stale partition: {}", alterSb);
-//                                try (Statement deleteStmt = connection.createStatement()) {
-//                                    deleteStmt.execute(alterSb.toString());
-//                                }
-                                deletePartitionCount++;
-                            }
-                            break;
                         }
                     }
                 }
