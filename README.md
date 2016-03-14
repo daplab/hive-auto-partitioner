@@ -18,7 +18,7 @@ can be extracted and passed to Hive.
 Say the parent folder is `/user/bperroud/myhivefolder/`, and my partition expression is `{year}/{month}/{day}`.
 When a new folder `/user/bperroud/myhivefolder/2016/01/18` is created, I can extract `year = 2016`, `month = 01`
 and `day = 18` out of this folder, and trigger the following DDL:
-`ALTER bperroud.my_hive_table ADD PARTITION (year = '2016', month = '01', day = '18')`.
+`ALTER bperroud.my_hive_table ADD PARTITION (year = '2016', month = '01', day = '18') LOCATION '/user/bperroud/myhivefolder/2016/01/18'`.
 
 The configuration file is reflecting these attributes the following:
 
