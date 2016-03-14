@@ -51,7 +51,7 @@ Before building the project, you need to build Trumpet dependency.
 ```
 git clone git@github.com:verisign/trumpet.git
 cd trumpet
-mvn clean instal -Phdp234 -DskipTests
+mvn clean install -Phdp234 -DskipTests
 ```
 
 Once this is complete, you can build this project:
