@@ -80,6 +80,7 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                     ResultSet partitionRs = stmt.executeQuery(partitionSb.toString());
 
                     while (partitionRs.next()) {
+                        partitionCount++;
                         String line = partitionRs.getString(1);
 
                         if (line.startsWith("Location:")) {
