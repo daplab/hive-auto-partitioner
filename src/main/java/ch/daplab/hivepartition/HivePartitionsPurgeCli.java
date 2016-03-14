@@ -55,13 +55,15 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
         Class.forName(driverName);
         connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
 
+        int partitionCount = 0;
+
         for (HivePartitionDTO dto : getHivePartitionDTOs()) {
 
             try (Statement stmt = connection.createStatement()) {
                 StringBuilder sb = new StringBuilder("show partitions ");
                 sb.append(Helper.escapeTableName(dto.getTableName()));
                 ResultSet rs = stmt.executeQuery(sb.toString());
-                int partitionCount = 0;
+                partitionCount = 0;
                 int deletePartitionCount = 0;
                 while (rs.next()) {
                     String partition = rs.getString(1);
@@ -109,7 +111,7 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                 System.out.println("" + partitionCount + " partitions found, " + deletePartitionCount + " partitions deleted");
 
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
-                LOG.warn("Got a HiveSQLException", e);
+                LOG.warn("Got a HiveSQLException after " + partitionCount + " partitions", e);
             }
         }
 
