@@ -39,7 +39,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
             for (FileStatus status: statuses) {
                 String path = status.getPath().toUri().getPath();
-                if (status.isDirectory()) {
+                if (!containsDisallowedPatterns(path) && status.isDirectory()) {
                     Map<String, String> partitionSpec = extractor.getPartitionSpec(holder, path);
                     if (partitionSpec != null) {
                         partitioner.create(holder.getTableName(), partitionSpec, path);
@@ -54,5 +54,10 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
     protected void initParser() {
         getParser().accepts(OPTION_CONFIG_FILE_FILE, "Local path to the configuration file.")
                 .withRequiredArg().required();
+    }
+
+    protected boolean containsDisallowedPatterns(String path) {
+        return path.contains("/tmp/")
+                || path.contains("/_temporary/");
     }
 }
