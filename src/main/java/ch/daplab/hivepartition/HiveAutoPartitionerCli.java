@@ -53,7 +53,7 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
         InfiniteTrumpetEventStreamer trumpetEventStreamer = new InfiniteTrumpetEventStreamer(getCuratorFrameworkKafka(),
                 getTopic(), HiveAutoPartitionerCli.class.getCanonicalName() + "-" + getTopic());
 
-        Partitioner partitioner = new Partitioner(getConf());
+        Partitioner partitioner = new Partitioner(getConf(), false);
 
         CreatePartitionObserver createPartitionObserver = new CreatePartitionObserver(trie, partitioner);
         DeletePartitionObserver deletePartitionObserver = new DeletePartitionObserver(trie, partitioner);

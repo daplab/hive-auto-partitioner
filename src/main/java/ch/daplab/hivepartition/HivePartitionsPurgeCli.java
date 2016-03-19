@@ -55,6 +55,8 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
         Class.forName(driverName);
         connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
 
+        Partitioner partitioner = new Partitioner(getConf(), isDryrun());
+
         int partitionCount = 0;
 
         for (HivePartitionDTO dto : getHivePartitionDTOs()) {
@@ -69,12 +71,17 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                     String partition = rs.getString(1);
                     partitionCount++;
 
+                    Map<String, String> partitionSpecs = new HashMap();
+                    for (String spec: partition.split("/")) {
+                        String[] parts = spec.split("=");
+                        partitionSpecs.put(parts[0], parts[1]);
+                    }
                     partition = partition.replace("/", "',`").replace("=", "`='");
                     StringBuilder partitionSb = new StringBuilder("describe formatted ");
                     partitionSb.append(Helper.escapeTableName(dto.getTableName()));
-                    partitionSb.append(" partition(`");
-                    partitionSb.append(partition);
-                    partitionSb.append("')");
+                    partitionSb.append(" partition(");
+                    partitionSb.append(Helper.escapePartitionSpecs(partitionSpecs));
+                    partitionSb.append(")");
 
                     LOG.debug("Partition query = {}", partitionSb);
 
@@ -94,16 +101,7 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                                 }
 
                                 if (!isDir) {
-                                    StringBuilder alterSb = new StringBuilder("ALTER TABLE ");
-                                    alterSb.append(Helper.escapeTableName(dto.getTableName()));
-                                    alterSb.append(" DROP PARTITION(`");
-                                    alterSb.append(partition);
-                                    alterSb.append("')");
-                                    System.out.println("DROP stale partition: " + alterSb.toString());
-                                    LOG.info("DROP stale partition: {}", alterSb);
-                                    //                                try (Statement deleteStmt = connection.createStatement()) {
-                                    //                                    deleteStmt.execute(alterSb.toString());
-                                    //                                }
+                                    partitioner.delete(dto.getTableName(), partitionSpecs);
                                     deletePartitionCount++;
                                 }
                                 break;

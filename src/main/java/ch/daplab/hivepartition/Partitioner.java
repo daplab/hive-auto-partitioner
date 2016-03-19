@@ -26,8 +26,9 @@ public class Partitioner implements AutoCloseable {
     private final HiveConf hiveConf;
     private final String jdbcUri;
     private final Connection connection;
+    private final boolean dryrun;
 
-    public Partitioner(Configuration conf) throws Exception {
+    public Partitioner(Configuration conf, boolean dryrun) throws Exception {
 
         hiveConf = new HiveConf();
         hiveConf.addResource(conf);
@@ -36,6 +37,8 @@ public class Partitioner implements AutoCloseable {
 
         Class.forName(driverName);
         connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
+
+        this.dryrun = dryrun;
     }
 
     public void create(String tableName, Map<String, String> partitionSpecs, String path) throws SQLException {
@@ -49,9 +52,11 @@ public class Partitioner implements AutoCloseable {
             sb.append(Helper.escapePartitionSpecs(partitionSpecs));
             sb.append(") LOCATION '").append(path).append("'");
 
-            LOG.warn("Generated query : {}", sb);
+            LOG.info("Generated query : {}", sb);
 
-            stmt.execute(sb.toString());
+            if (!dryrun) {
+                stmt.execute(sb.toString());
+            }
         } catch (org.apache.hive.service.cli.HiveSQLException e) {
             LOG.warn("Got a HiveSQLException", e);
         }
@@ -68,9 +73,11 @@ public class Partitioner implements AutoCloseable {
             sb.append(Helper.escapePartitionSpecs(partitionSpecs));
             sb.append(")");
 
-            LOG.warn("Generated query : {}", sb);
+            LOG.info("Generated query : {}", sb);
 
-            stmt.execute(sb.toString());
+            if (!dryrun) {
+                stmt.execute(sb.toString());
+            }
         } catch (org.apache.hive.service.cli.HiveSQLException e) {
             LOG.warn("Got a HiveSQLException", e);
         }
@@ -83,7 +90,7 @@ public class Partitioner implements AutoCloseable {
         partitions.put("month", args[3]);
         partitions.put("day", args[4]);
 
-        try (Partitioner partitioner = new Partitioner(new Configuration())) {
+        try (Partitioner partitioner = new Partitioner(new Configuration(), true)) {
             partitioner.create(args[1], partitions, "/tmp/1234/2345/3456");
         }
     }

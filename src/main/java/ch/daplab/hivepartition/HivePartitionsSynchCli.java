@@ -24,7 +24,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
     protected int internalRun() throws Exception {
 
         Extractor extractor = new Extractor();
-        Partitioner partitioner = new Partitioner(getConf());
+        Partitioner partitioner = new Partitioner(getConf(), isDryrun());
         FileSystem fs = FileSystem.get(getConf());
 
         for (HivePartitionDTO dto: getHivePartitionDTOs()) {

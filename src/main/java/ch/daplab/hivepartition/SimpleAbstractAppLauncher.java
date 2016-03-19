@@ -30,6 +30,7 @@ public abstract class SimpleAbstractAppLauncher implements Tool {
 
     protected static final String OPTION_CONFIG_FILE_FILE = "configFile";
     protected static final String OPTION_HELP = "help";
+    protected static final String OPTION_DRY_RUN = "dryrun";
 
     protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
 
@@ -38,6 +39,7 @@ public abstract class SimpleAbstractAppLauncher implements Tool {
     private OptionSet options;
     private File configFile;
     private List<HivePartitionDTO> hivePartitionDTOs;
+    private boolean dryrun = false;
     private final ObjectMapper mapper = new ObjectMapper();
 
     protected final OptionSet getOptions() {
@@ -53,6 +55,7 @@ public abstract class SimpleAbstractAppLauncher implements Tool {
     protected ObjectMapper mapper() { return this.mapper; }
     protected File getConfigFile() { return this.configFile; }
     protected List<HivePartitionDTO> getHivePartitionDTOs() { return this.hivePartitionDTOs; }
+    protected boolean isDryrun() { return dryrun; }
 
     @Override
     public final int run(String[] args) throws Exception {
@@ -74,6 +77,7 @@ public abstract class SimpleAbstractAppLauncher implements Tool {
 
 
             String configFileStr = (String) getOptions().valueOf(OPTION_CONFIG_FILE_FILE);
+            dryrun = getOptions().has(OPTION_DRY_RUN);
 
             configFile = new File(configFileStr);
 
@@ -96,6 +100,7 @@ public abstract class SimpleAbstractAppLauncher implements Tool {
     protected void privateInitParser() {
         getParser().accepts(OPTION_CONFIG_FILE_FILE, "Local path to the configuration file.")
                 .withRequiredArg().required();
+        getParser().accepts(OPTION_DRY_RUN, "Dryrun, log but do not execute the DDL statements.");
 
         initParser();
 
