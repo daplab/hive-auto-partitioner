@@ -141,9 +141,7 @@ folders will be created, not on the existing one. A tool to create partitions on
 provided to fill up the gap:
 
 ```
-sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-init.sh \
-  --topic trumpet \
-  --zk.connect daplab-wn-22.fri.lan:2181,daplab-wn-25.fri.lan:2181,daplab-wn-33.fri.lan:2181 \
+sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-synch.sh \
   --configFile /opt/daplab/hive-auto-partitioner/config/hive-partitions.json
 ```
 
@@ -151,7 +149,10 @@ sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-init.sh \
 
 Another script is provided which is checking that every partition location actually exists.
 
-
+```
+sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-purge.sh \
+  --configFile /opt/daplab/hive-auto-partitioner/config/hive-partitions.json
+```
 
 # Contributing to Hive-Auto-Partitioner <a id="Contributing"></a>
 
