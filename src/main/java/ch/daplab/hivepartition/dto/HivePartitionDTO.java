@@ -2,6 +2,9 @@ package ch.daplab.hivepartition.dto;
 
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import java.util.Collections;
+import java.util.List;
+
 public class HivePartitionDTO {
 
     @JsonProperty
@@ -10,6 +13,8 @@ public class HivePartitionDTO {
     private String parentPath;
     @JsonProperty
     private String pattern;
+    @JsonProperty
+    private List<String> exclusions = Collections.emptyList();
 
     public HivePartitionDTO() {}
 
@@ -31,4 +36,7 @@ public class HivePartitionDTO {
         return pattern;
     }
 
+    public List<String> getExclusions() {
+        return exclusions;
+    }
 }

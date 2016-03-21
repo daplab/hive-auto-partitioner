@@ -36,6 +36,12 @@ The flow diagram below illustrate the interaction between components.
 
 ![Hive-Auto_partitioner Flow Diagram](hive-partitioner-flow.png)
 
+# Limitations
+
+The partition deletion works only if the delete is made on the top level, i.e. if the folder
+and partitions is `/a/c/b/2016/03/03`, if `/a/c/b/2016` is deleted, the partitions will not
+be deleted. The (heavy) `partitions-purge` has to be launched to re-synchronize the partitions.
+
 # How to use it
 
 This project is based on [Maven](http://maven.apache.org), and build a RPM for easy installation. We also provide an
@@ -130,6 +136,21 @@ hdfs dfs -mkdir -p /tmp/test123/value-for-p1/another-value-for-p2/
 
 This will create a partition `(p1 = value-for-p1, p2 = 'another-value-for-p2')`. That's as easy as that!
 
+### Partition by `year`, `month`, `day`
+
+```
+create table `default`.`test456` (
+  col1              string,
+  col2              int
+)
+partitioned by (year int, month int, day int) LOCATION '/tmp/test456/';
+
+ALTER TABLE `default`.`test123` ADD PARTITION (`month`='03',`year`='2016',`day`='03') LOCATION '/tmp/test456/2016/03/03';
+```
+
+Mind that with `hive.assume-canonical-partition-keys` turned on, the partition will strip leading `0`
+and become `year=2016/month=3/day=3`.
+
 # Tools
 
 Few tools are available to initialize and purge the partitions
@@ -166,10 +187,6 @@ And if you find cool writing such piece of software, join us every Thursday even
 
 # TODO
 
-* Delete partition: This is partially implemented, but do only function when folders are deleted with `--skipTrash`.
-  The most tricky part is that HDFS delete event does not embed the inode type, i.e. if the
-  path deleted is a file or a folder. The partition should obviously be deleted when the
-  folder is removed.
 * Delayed partition creation: sometime it would be better to create the partition when
   all the data is stored in the folder, and not at the first file creation like
   it is the case as of today. This would be translated, for instance,

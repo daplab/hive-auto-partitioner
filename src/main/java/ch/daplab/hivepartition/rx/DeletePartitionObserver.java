@@ -3,6 +3,7 @@ package ch.daplab.hivepartition.rx;
 import ch.daplab.hivepartition.Extractor;
 import ch.daplab.hivepartition.Partitioner;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
+import ch.daplab.hivepartition.metrics.MetricsHolder;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.dto.EventAndTxId;
 import org.slf4j.Logger;
@@ -31,10 +32,26 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
     public void call(Map<String, Object> event) {
 
         String eventType = (String) event.get(EventAndTxId.FIELD_EVENTTYPE);
-        String path = (String) event.get(EventAndTxId.FIELD_PATH);
+        String path;
 
-        if (!("UNLINK".equals(eventType))) {
-            return;
+        // The logic is the following:
+        // An UNLINK event is generated if -skipTrash is provided, which is not that frequent.
+        // If the deleted file/folder goes into Trash, it's a RENAME event fired up.
+        //
+        // The idea is to catch the rename from a managed folder and remove the partition, if any
+        // A corner case is to upload into a tmp folder inside the managed folder and
+        // moved to the right partition. CreatePartitionObserver should catch this event too
+        // so it could be ignored further here.
+
+        switch (eventType) {
+            case "UNLINK":
+                path = (String) event.get(EventAndTxId.FIELD_PATH);
+                break;
+            case "RENAME":
+                path = (String) event.get(EventAndTxId.FIELD_SRCPATH);
+                break;
+            default:
+                return;
         }
 
         LOG.trace("Processing {}", event);
@@ -52,10 +69,14 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
 
                     LOG.debug("Deleting partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
 
+                    MetricsHolder.getDeletePartitionCounter().inc();
+                    final long startTime = System.currentTimeMillis();
                     try {
                         partitioner.delete(holder.getTableName(), partitionSpec);
                     } catch (SQLException e) {
                         LOG.warn("Exception while deleting the partition {}, with partition spec {} on event {}", holder, partitionSpec, event, e);
+                    } finally {
+                        MetricsHolder.getDeletePartitionHistogram().update(System.currentTimeMillis() - startTime);
                     }
                 }
             }

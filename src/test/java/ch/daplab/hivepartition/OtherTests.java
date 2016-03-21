@@ -1,11 +1,11 @@
 package ch.daplab.hivepartition;
 
 import ch.daplab.hivepartition.dto.Helper;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by bperroud on 3/13/16.
@@ -41,6 +41,16 @@ public class OtherTests {
         String location = line.replaceAll("Location:\\s*", "").trim();
 
         Assert.assertEquals("hdfs://daplab2/shared/zefix/sogc/2010/10/01", location);
+    }
+
+    @Test
+    public void testMatcher() throws Exception {
+
+        List<String> exclusions = Collections.singletonList(".*/tmp/.*");
+
+        Assert.assertTrue(Partitioner.containsDisallowedPatterns(exclusions, "/a/b/c/tmp/2016/03/03"));
+        Assert.assertFalse(Partitioner.containsDisallowedPatterns(exclusions, "/a/b/c/2016/03/03"));
+
     }
 
 }

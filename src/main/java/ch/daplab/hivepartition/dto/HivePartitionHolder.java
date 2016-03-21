@@ -1,6 +1,7 @@
 package ch.daplab.hivepartition.dto;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,6 +45,10 @@ public class HivePartitionHolder {
 
     public String getUserPattern() {
         return dto.getPattern();
+    }
+
+    public List<String> getExclusions() {
+        return dto.getExclusions();
     }
 
     public Pattern getPattern() {

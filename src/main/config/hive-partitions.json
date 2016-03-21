@@ -2,7 +2,11 @@
   {
     "tableName": "default.test123",
     "parentPath": "/tmp/test123/",
-    "pattern": "{p1}/{p2}"
+    "pattern": "{p1}/{p2}",
+    "exclusions": [
+      ".*/tmp/.*",
+      ".*/_temporary/.*"
+    ]
   },
   {
     "tableName": "default.zefix_sogc",

@@ -15,6 +15,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Partitioner implements AutoCloseable {
@@ -81,6 +82,16 @@ public class Partitioner implements AutoCloseable {
         } catch (org.apache.hive.service.cli.HiveSQLException e) {
             LOG.warn("Got a HiveSQLException", e);
         }
+    }
+
+    public static boolean containsDisallowedPatterns(List<String> exclusions, String path) {
+        for (String exclusion: exclusions) {
+            boolean matches = path.matches(exclusion);
+            if (matches) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void main (String[] args) throws Exception {

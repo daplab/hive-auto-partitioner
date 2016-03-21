@@ -3,6 +3,7 @@ package ch.daplab.hivepartition.rx;
 import ch.daplab.hivepartition.Extractor;
 import ch.daplab.hivepartition.Partitioner;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
+import ch.daplab.hivepartition.metrics.MetricsHolder;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.dto.EventAndTxId;
 import org.apache.hadoop.conf.Configuration;
@@ -32,12 +33,23 @@ public class CreatePartitionObserver implements Action1<Map<String, Object>> {
     public void call(Map<String, Object> event) {
 
         String eventType = (String) event.get(EventAndTxId.FIELD_EVENTTYPE);
-        String nodeType = (String) event.get("iNodeType");
-        if ( ! ("CREATE".equals(eventType) && "DIRECTORY".equals(nodeType))) {
-            return;
+        String path;
+
+        switch (eventType) {
+            case "CREATE":
+                path = (String) event.get(EventAndTxId.FIELD_PATH);
+                String nodeType = (String) event.get("iNodeType");
+                if (!"DIRECTORY".equals(nodeType)) {
+                    return;
+                }
+                break;
+            case "RENAME":
+                path = (String) event.get(EventAndTxId.FIELD_DSTPATH);
+                break;
+            default:
+                return;
         }
 
-        String path = (String) event.get(EventAndTxId.FIELD_PATH);
 
         LOG.trace("Processing {}", event);
 
@@ -50,14 +62,18 @@ public class CreatePartitionObserver implements Action1<Map<String, Object>> {
 
                 Map<String, String> partitionSpec = extractor.getPartitionSpec(holder, path);
 
-                if (partitionSpec != null) {
+                if (partitionSpec != null && !partitioner.containsDisallowedPatterns(holder.getExclusions(), path)) {
 
                     LOG.debug("Creating partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
 
+                    MetricsHolder.getCreatePartitionCounter().inc();
+                    final long startTime = System.currentTimeMillis();
                     try {
                         partitioner.create(holder.getTableName(), partitionSpec, path);
                     } catch (SQLException e) {
                         LOG.warn("Exception while creating the partition {}, with partition spec {} on event {}", holder, partitionSpec, event, e);
+                    } finally {
+                        MetricsHolder.getCreatePartitionHistogram().update(System.currentTimeMillis() - startTime);
                     }
                 }
             }

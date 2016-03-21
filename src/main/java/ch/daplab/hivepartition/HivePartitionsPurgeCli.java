@@ -15,6 +15,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.hive.service.cli.HiveSQLException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
@@ -23,10 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.File;
 import java.net.URI;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +58,8 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
         int partitionCount = 0;
 
         for (HivePartitionDTO dto : getHivePartitionDTOs()) {
+
+            long startTime = System.currentTimeMillis();
 
             try (Statement stmt = connection.createStatement()) {
                 StringBuilder sb = new StringBuilder("show partitions ");
@@ -97,7 +97,8 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                                 Path p = new Path(location);
                                 boolean isDir = fs.isDirectory(p);
                                 if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
-                                    LOG.warn("Warning: partition {} seems to be outside of the table parent folder {}", p, dto.getParentPath());
+                                    LOG.warn("Warning: location {} seems to be outside of the table parent folder {} for table {} ({})",
+                                            p, dto.getParentPath(), dto.getTableName(), Helper.escapePartitionSpecs(partitionSpecs));
                                 }
 
                                 if (!isDir) {
@@ -107,10 +108,14 @@ public class HivePartitionsPurgeCli extends SimpleAbstractAppLauncher {
                                 break;
                             }
                         }
+                    } catch (SQLException e) {
+                        LOG.warn("Got an SQLException while querying the partition {} on table {}, query was {}, {}",
+                                Helper.escapePartitionSpecs(partitionSpecs), dto.getTableName(),partitionSb.toString(), e.getMessage());
                     }
                 }
 
-                System.out.println("" + partitionCount + " partitions found, " + deletePartitionCount + " partitions deleted");
+                System.out.println("Processed table " + dto.getTableName() + " in " + (System.currentTimeMillis() - startTime) + "ms : " +
+                        partitionCount + " partitions found, " + deletePartitionCount + " partitions deleted");
 
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException after " + partitionCount + " partitions", e);
