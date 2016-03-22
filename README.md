@@ -161,29 +161,22 @@ ALTER TABLE `default`.`test123` ADD PARTITION (`month`='03',`year`='2016',`day`=
 Mind that with `hive.assume-canonical-partition-keys` turned on, the partition will strip leading `0`
 and become `year=2016/month=3/day=3`.
 
-# Tools
+# Synchronization or Reconciliation of _older_ tables
 
-Few tools are available to initialize and purge the partitions
- 
-## Create partition for every matching folders
-
-If hive-auto-partitioner is setup on a folder with already existing sub-folders, only partition on the *new*
-folders will be created, not on the existing one. A tool to create partitions on existing folders is thus
-provided to fill up the gap:
+A powerful but yet heavy tool is available to create new partitions and purge old ones in one go, 
+because if hive-auto-partitioner is setup on a folder with already existing sub-folders,
+only partition on the *new* folders will be created, not on the existing one.
+A tool to create partitions on existing folders is thus provided to fill up the gap:
 
 ```
 sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-synch.sh \
   --configFile /opt/daplab/hive-auto-partitioner/config/hive-partitions.json
 ```
 
-## Delete partitions on non-existing HDFS folder
+## Options
 
-Another script is provided which is checking that every partition location actually exists.
-
-```
-sudo -u hdfs /opt/daplab/hive-auto-partitioner/bin/partitions-purge.sh \
-  --configFile /opt/daplab/hive-auto-partitioner/config/hive-partitions.json
-```
+The aforementioned script is `--help` friendly, please refer to the help to get all the possible
+options.
 
 # Contributing to Hive-Auto-Partitioner <a id="Contributing"></a>
 

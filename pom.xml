@@ -72,16 +72,6 @@
 
     <repositories>
         <repository>
-            <id>Maven Central Repo</id>
-            <name>Maven Central Repo</name>
-            <url>https://repo1.maven.org/maven2</url>
-        </repository>
-        <repository>
-            <id>Artifactory Cloudera Releases</id>
-            <name>Artifactory Cloudera Releases</name>
-            <url>https://repository.cloudera.com/cloudera/cloudera-repos/</url>
-        </repository>
-        <repository>
             <id>repo.hortonworks.com</id>
             <name>Hortonworks HDP Maven Repository</name>
             <url>http://repo.hortonworks.com/content/repositories/releases/</url>
@@ -90,20 +80,6 @@
             <id>jetty.repo.hortonworks.com</id>
             <name>Hortonworks HDP Maven Repository fro Jetty</name>
             <url>http://repo.hortonworks.com/content/repositories/jetty-hadoop/</url>
-        </repository>
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>central</id>
-            <name>libs-release</name>
-            <url>https://artifactory.vrsn.com/artifactory/libs-release</url>
-        </repository>
-        <repository>
-            <snapshots />
-            <id>snapshots</id>
-            <name>libs-snapshot</name>
-            <url>https://artifactory.vrsn.com/artifactory/libs-snapshot</url>
         </repository>
     </repositories>
 
