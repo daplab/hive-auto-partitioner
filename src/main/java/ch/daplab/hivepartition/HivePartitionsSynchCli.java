@@ -38,7 +38,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
         boolean dropOnly = getOptions().has(OPTION_DROP_ONLY);
 
         FileSystem fs = FileSystem.get(getConf());
-fs.check
+
         final HiveConf hiveConf;
         final String jdbcUri;
         final Connection connection;
