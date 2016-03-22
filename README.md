@@ -38,9 +38,19 @@ The flow diagram below illustrate the interaction between components.
 
 # Limitations
 
+## Partitions separation
+
+Hive Auto Partition expect the partitions to be separated, preferably by a `/`, but not necessarily.
+For instance, `{year}/{month}/{day}` partitioning is good, while `{year}{month}{day}` can't
+be handled. `year={year},month={month},day={day}` would also work, too, but separation
+in sub-folders is strongly encouraged.
+
+## Partitions deletion pattern
+
 The partition deletion works only if the delete is made on the top level, i.e. if the folder
 and partitions is `/a/c/b/2016/03/03`, if `/a/c/b/2016` is deleted, the partitions will not
-be deleted. The (heavy) `partitions-purge` has to be launched to re-synchronize the partitions.
+be deleted. The (heavy) `partitions-synch.sh` script has to be launched to
+re-synchronize the partitions.
 
 # How to use it
 
