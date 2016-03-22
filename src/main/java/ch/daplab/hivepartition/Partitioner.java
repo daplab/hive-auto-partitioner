@@ -29,6 +29,13 @@ public class Partitioner implements AutoCloseable {
     private final Connection connection;
     private final boolean dryrun;
 
+    public Partitioner(HiveConf hiveConf, String jdbcUri, boolean dryrun, Connection connection) throws Exception {
+        this.hiveConf = hiveConf;
+        this.jdbcUri = jdbcUri;
+        this.dryrun = dryrun;
+        this.connection = connection;
+    }
+
     public Partitioner(Configuration conf, boolean dryrun) throws Exception {
 
         hiveConf = new HiveConf();
