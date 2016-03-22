@@ -67,14 +67,20 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
 
                 if (partitionSpec != null) {
 
-                    LOG.debug("Deleting partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
+                    LOG.info("Deleting partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
 
                     MetricsHolder.getDeletePartitionCounter().inc();
                     final long startTime = System.currentTimeMillis();
                     try {
                         partitioner.delete(holder.getTableName(), partitionSpec);
                     } catch (SQLException e) {
-                        LOG.warn("Exception while deleting the partition {}, with partition spec {} on event {}", holder, partitionSpec, event, e);
+                        LOG.warn("Exception while deleting the partition on table {}, with partition spec {} on event {}", holder, partitionSpec, event, e);
+
+                        if (e.getCause() != null
+                                && e.getCause() instanceof org.apache.thrift.transport.TTransportException) {
+                            LOG.error("Don't know how to recover from this one, dying.");
+                            Runtime.getRuntime().halt(1);
+                        }
                     } finally {
                         MetricsHolder.getDeletePartitionHistogram().update(System.currentTimeMillis() - startTime);
                     }

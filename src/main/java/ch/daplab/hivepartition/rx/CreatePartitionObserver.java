@@ -64,14 +64,20 @@ public class CreatePartitionObserver implements Action1<Map<String, Object>> {
 
                 if (partitionSpec != null && !partitioner.containsDisallowedPatterns(holder.getExclusions(), path)) {
 
-                    LOG.debug("Creating partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
+                    LOG.info("Creating partition based on event {} and partition {}, with partition spec {}", event, holder, partitionSpec);
 
                     MetricsHolder.getCreatePartitionCounter().inc();
                     final long startTime = System.currentTimeMillis();
                     try {
                         partitioner.create(holder.getTableName(), partitionSpec, path);
                     } catch (SQLException e) {
-                        LOG.warn("Exception while creating the partition {}, with partition spec {} on event {}", holder, partitionSpec, event, e);
+                        LOG.warn("Exception while creating the partition on table {}, with partition spec {} on event {}", holder.getTableName(), partitionSpec, event, e);
+
+                        if (e.getCause() != null
+                                && e.getCause() instanceof org.apache.thrift.transport.TTransportException) {
+                            LOG.error("Don't know how to recover from this one, dying.");
+                            Runtime.getRuntime().halt(1);
+                        }
                     } finally {
                         MetricsHolder.getCreatePartitionHistogram().update(System.currentTimeMillis() - startTime);
                     }

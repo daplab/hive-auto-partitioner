@@ -29,6 +29,8 @@ public class Partitioner implements AutoCloseable {
     private final Connection connection;
     private final boolean dryrun;
 
+    private volatile int errorCount = 0;
+
     public Partitioner(HiveConf hiveConf, String jdbcUri, boolean dryrun, Connection connection) throws Exception {
         this.hiveConf = hiveConf;
         this.jdbcUri = jdbcUri;
@@ -64,9 +66,12 @@ public class Partitioner implements AutoCloseable {
 
             if (!dryrun) {
                 stmt.execute(sb.toString());
+                errorCount = 0;
             }
         } catch (org.apache.hive.service.cli.HiveSQLException e) {
             LOG.warn("Got a HiveSQLException", e);
+            errorCount++;
+            ensureLowErrorCountOrShutdown();
         }
     }
 
@@ -85,9 +90,12 @@ public class Partitioner implements AutoCloseable {
 
             if (!dryrun) {
                 stmt.execute(sb.toString());
+                errorCount = 0;
             }
         } catch (org.apache.hive.service.cli.HiveSQLException e) {
             LOG.warn("Got a HiveSQLException", e);
+            errorCount++;
+            ensureLowErrorCountOrShutdown();
         }
     }
 
@@ -117,6 +125,12 @@ public class Partitioner implements AutoCloseable {
     public void close() throws Exception {
         if (connection != null) {
             connection.close();
+        }
+    }
+
+    private void ensureLowErrorCountOrShutdown() {
+        if (errorCount > 10) {
+            Runtime.getRuntime().halt(1);
         }
     }
 }
