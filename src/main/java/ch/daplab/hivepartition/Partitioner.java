@@ -66,6 +66,7 @@ public class Partitioner implements Closeable {
                     stmt.execute(sb.toString());
                     errorCount = 0;
                 }
+                break;
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException", e);
                 errorCount++;
@@ -93,6 +94,7 @@ public class Partitioner implements Closeable {
                     stmt.execute(sb.toString());
                     errorCount = 0;
                 }
+                break;
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException", e);
                 errorCount++;

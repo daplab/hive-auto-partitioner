@@ -18,6 +18,8 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
     protected static final String OPTION_DROP_BEFORE_CREATE = "drop-before-create";
     protected static final String OPTION_CHECK_BEFORE_CREATE = "check-before-create";
+    protected static final String OPTION_LIMIT = "limit";
+
     protected static final String OPTION_DROP_WHEN_ERROR = "drop-when-error";
     protected static final String OPTION_CREATE_ONLY = "create-only";
     protected static final String OPTION_DROP_ONLY = "drop-only";
@@ -37,6 +39,8 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
         boolean createOnly = getOptions().has(OPTION_CREATE_ONLY);
         boolean dropOnly = getOptions().has(OPTION_DROP_ONLY);
+
+        Integer limit = getOptions().has(OPTION_LIMIT) ? (Integer)getOptions().valueOf(OPTION_LIMIT) : null;
 
         FileSystem fs = FileSystem.get(getConf());
 
@@ -115,9 +119,14 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
                 FileStatus[] statuses = fs.globStatus(new Path(holder.getParentPath() + wildcardPath));
 
-                Connection connection = dataSource.getConnection();
+                int numberToProcess = limit == null ? statuses.length : limit;
 
+                int c = statuses.length;
                 for (FileStatus status : statuses) {
+                    if (c-- > numberToProcess) {
+                        LOG.trace("Skip {}, c={}, numberToProcess={}", status.getPath().toUri().getPath(), c, numberToProcess);
+                        continue;
+                    }
                     String path = status.getPath().toUri().getPath();
                     if (!partitioner.containsDisallowedPatterns(dto.getExclusions(), path) && status.isDirectory()) {
                         Map<String, String> partitionSpec = extractor.getPartitionSpec(holder, path);
@@ -125,15 +134,19 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                             if (dropBeforeCreate) {
                                 partitioner.delete(holder.getTableName(), partitionSpec);
                             }
+                            boolean create = true;
                             if (checkBeforeCreate) {
-
-                                String location = getPartitionLocation(dto, partitionSpec, connection);
-                                if (location != null) {
-                                    continue;
+                                try(Connection connection = dataSource.getConnection()) {
+                                    String location = getPartitionLocation(dto, partitionSpec, connection);
+                                    if (location != null) {
+                                        create = false;
+                                    }
                                 }
                             }
-                            partitionCount++;
-                            partitioner.create(holder.getTableName(), partitionSpec, path);
+                            if (create) {
+                                partitionCount++;
+                                partitioner.create(holder.getTableName(), partitionSpec, path);
+                            }
                         }
                     }
                 }
@@ -152,6 +165,9 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
         getParser().accepts(OPTION_CHECK_BEFORE_CREATE,
                 "Validate that the partition do not exists before executing a ADD PARTITION statement." +
                         " This will slow down the process");
+        getParser().accepts(OPTION_LIMIT,
+                "Limit the number of folders to parse").withRequiredArg().ofType(Integer.class);
+
         getParser().accepts(OPTION_DROP_WHEN_ERROR,
                 "Issue a DROP PARTITION statement when the partition is not found");
         getParser().accepts(OPTION_CREATE_ONLY,
