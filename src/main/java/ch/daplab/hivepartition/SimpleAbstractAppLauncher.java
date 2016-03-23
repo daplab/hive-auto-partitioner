@@ -1,32 +1,20 @@
 package ch.daplab.hivepartition;
 
-import ch.daplab.hivepartition.dto.Helper;
 import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.URI;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.List;
 
 public abstract class SimpleAbstractAppLauncher implements Tool {
-
-    protected static String driverName = "org.apache.hive.jdbc.HiveDriver";
 
     protected static final String OPTION_CONFIG_FILE_FILE = "configFile";
     protected static final String OPTION_HELP = "help";

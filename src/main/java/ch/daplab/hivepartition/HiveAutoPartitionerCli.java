@@ -66,6 +66,8 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
 
         connectableObservable.connect();
 
+        System.err.println("Do I see this line?");
+
         return 0;
     }
 

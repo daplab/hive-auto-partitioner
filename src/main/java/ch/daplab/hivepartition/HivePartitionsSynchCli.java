@@ -3,16 +3,13 @@ package ch.daplab.hivepartition;
 import ch.daplab.hivepartition.dto.Helper;
 import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.util.ToolRunner;
 
-import java.net.URI;
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,27 +40,9 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
         FileSystem fs = FileSystem.get(getConf());
 
-        final HiveConf hiveConf;
-        final String jdbcUri;
-        final Connection connection;
+        final DataSource dataSource = HiveJDBCHelper.getDataSource(HiveJDBCHelper.getJdbcUri(getConf()));
 
-        hiveConf = new HiveConf();
-        hiveConf.addResource(getConf());
-        URI uri = new URI(hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
-        jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
-
-        Class.forName(driverName);
-
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(jdbcUri);
-        config.setUsername("hdfs");
-        config.setPassword("");
-        config.setMaximumPoolSize(3);
-
-        HikariDataSource dataSource = new HikariDataSource(config);
-        connection = dataSource.getConnection();
-
-        Partitioner partitioner = new Partitioner(hiveConf, jdbcUri, isDryrun(), dataSource);
+        Partitioner partitioner = new Partitioner(dataSource, isDryrun());
 
         Extractor extractor = new Extractor();
 
@@ -78,7 +57,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
             HivePartitionHolder holder = new HivePartitionHolder(dto);
 
             if ((dropOnly && !createOnly) || (!dropOnly && !createOnly)) {
-                try (Statement stmt = connection.createStatement()) {
+                try (Connection connection = dataSource.getConnection(); Statement stmt = connection.createStatement()) {
                     StringBuilder sb = new StringBuilder("show partitions ");
                     sb.append(Helper.escapeTableName(dto.getTableName()));
                     ResultSet rs = stmt.executeQuery(sb.toString());
@@ -136,6 +115,8 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
                 FileStatus[] statuses = fs.globStatus(new Path(holder.getParentPath() + wildcardPath));
 
+                Connection connection = dataSource.getConnection();
+
                 for (FileStatus status : statuses) {
                     String path = status.getPath().toUri().getPath();
                     if (!partitioner.containsDisallowedPatterns(dto.getExclusions(), path) && status.isDirectory()) {
@@ -145,6 +126,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                                 partitioner.delete(holder.getTableName(), partitionSpec);
                             }
                             if (checkBeforeCreate) {
+
                                 String location = getPartitionLocation(dto, partitionSpec, connection);
                                 if (location != null) {
                                     continue;

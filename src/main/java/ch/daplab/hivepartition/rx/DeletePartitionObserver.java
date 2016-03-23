@@ -79,7 +79,7 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
                         if (e.getCause() != null
                                 && e.getCause() instanceof org.apache.thrift.transport.TTransportException) {
                             LOG.error("Don't know how to recover from this one, dying.");
-                            Runtime.getRuntime().halt(1);
+                            throw new RuntimeException("Please shutdown.", e);
                         }
                     } finally {
                         MetricsHolder.getDeletePartitionHistogram().update(System.currentTimeMillis() - startTime);

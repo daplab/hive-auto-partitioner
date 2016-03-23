@@ -6,7 +6,6 @@ import ch.daplab.hivepartition.dto.HivePartitionHolder;
 import ch.daplab.hivepartition.metrics.MetricsHolder;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.dto.EventAndTxId;
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.functions.Action1;
@@ -76,7 +75,7 @@ public class CreatePartitionObserver implements Action1<Map<String, Object>> {
                         if (e.getCause() != null
                                 && e.getCause() instanceof org.apache.thrift.transport.TTransportException) {
                             LOG.error("Don't know how to recover from this one, dying.");
-                            Runtime.getRuntime().halt(1);
+                            throw new RuntimeException("Please shutdown.", e);
                         }
                     } finally {
                         MetricsHolder.getCreatePartitionHistogram().update(System.currentTimeMillis() - startTime);
