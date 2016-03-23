@@ -3,6 +3,8 @@ package ch.daplab.hivepartition;
 import ch.daplab.hivepartition.dto.Helper;
 import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
     protected static final String OPTION_DROP_BEFORE_CREATE = "drop-before-create";
+    protected static final String OPTION_CHECK_BEFORE_CREATE = "check-before-create";
     protected static final String OPTION_DROP_WHEN_ERROR = "drop-when-error";
     protected static final String OPTION_CREATE_ONLY = "create-only";
     protected static final String OPTION_DROP_ONLY = "drop-only";
@@ -31,6 +34,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
     public final int internalRun() throws Exception {
 
         boolean dropBeforeCreate = getOptions().has(OPTION_DROP_BEFORE_CREATE);
+        boolean checkBeforeCreate = getOptions().has(OPTION_CHECK_BEFORE_CREATE);
 
         boolean dropWhenError = getOptions().has(OPTION_DROP_WHEN_ERROR);
 
@@ -49,9 +53,18 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
         jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
         Class.forName(driverName);
-        connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
 
-        Partitioner partitioner = new Partitioner(hiveConf, jdbcUri, isDryrun(), connection);
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(jdbcUri);
+        config.setUsername("hdfs");
+        config.setPassword("");
+        config.setMaximumPoolSize(3);
+
+        HikariDataSource dataSource = new HikariDataSource(config);
+        connection = dataSource.getConnection();
+
+        Partitioner partitioner = new Partitioner(hiveConf, jdbcUri, isDryrun(), dataSource);
+
         Extractor extractor = new Extractor();
 
         for (HivePartitionDTO dto : getHivePartitionDTOs()) {
@@ -80,43 +93,25 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                             String[] parts = spec.split("=");
                             partitionSpecs.put(parts[0], parts[1]);
                         }
-                        StringBuilder partitionSb = new StringBuilder("describe formatted ");
-                        partitionSb.append(Helper.escapeTableName(dto.getTableName()));
-                        partitionSb.append(" partition(");
-                        partitionSb.append(Helper.escapePartitionSpecs(partitionSpecs));
-                        partitionSb.append(")");
 
-                        LOG.debug("Partition query = {}", partitionSb);
+                        String location = getPartitionLocation(dto, partitionSpecs, connection);
 
-                        try (Statement partitionStmt = connection.createStatement()) {
-
-                            ResultSet partitionRs = partitionStmt.executeQuery(partitionSb.toString());
-
-                            while (partitionRs.next()) {
-                                String line = partitionRs.getString(1);
-
-                                if (line.startsWith("Location:")) {
-                                    String location = partitionRs.getString(2);
-                                    Path p = new Path(location);
-                                    boolean isDir = fs.isDirectory(p);
-                                    if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
-                                        LOG.warn("Warning: location {} seems to be outside of the table parent folder {} for table {} ({})",
-                                                p, dto.getParentPath(), dto.getTableName(), Helper.escapePartitionSpecs(partitionSpecs));
-                                    }
-
-                                    if (!isDir) {
-                                        partitioner.delete(dto.getTableName(), partitionSpecs);
-                                        deletePartitionCount++;
-                                    }
-                                    break;
-                                }
-                            }
-                        } catch (SQLException e) {
-                            LOG.warn("Got an SQLException while querying the partition {} on table {}, query was {}, {}",
-                                    Helper.escapePartitionSpecs(partitionSpecs), dto.getTableName(), partitionSb.toString(), e.getMessage());
-
+                        if (location == null) {
                             if (dropWhenError) {
                                 partitioner.delete(dto.getTableName(), partitionSpecs);
+                            }
+                        } else {
+
+                            Path p = new Path(location);
+                            boolean isDir = fs.isDirectory(p);
+                            if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
+                                LOG.warn("Warning: location {} seems to be outside of the table parent folder {} for table {} ({})",
+                                        p, dto.getParentPath(), dto.getTableName(), Helper.escapePartitionSpecs(partitionSpecs));
+                            }
+
+                            if (!isDir) {
+                                partitioner.delete(dto.getTableName(), partitionSpecs);
+                                deletePartitionCount++;
                             }
                         }
                     }
@@ -149,6 +144,12 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                             if (dropBeforeCreate) {
                                 partitioner.delete(holder.getTableName(), partitionSpec);
                             }
+                            if (checkBeforeCreate) {
+                                String location = getPartitionLocation(dto, partitionSpec, connection);
+                                if (location != null) {
+                                    continue;
+                                }
+                            }
                             partitionCount++;
                             partitioner.create(holder.getTableName(), partitionSpec, path);
                         }
@@ -166,12 +167,44 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
     protected void initParser() {
         getParser().accepts(OPTION_DROP_WHEN_ERROR,
                 "Issue a DROP PARTITION statement when the partition is not found");
-        getParser().accepts(OPTION_DROP_BEFORE_CREATE,
-                "Issue a DROP PARTITION statement before the CREATE PARTITION -- useful for migration to `hive.assume-canonical-partition-keys`");
+        getParser().accepts(OPTION_CHECK_BEFORE_CREATE,
+                "Validate that the partition do not exists before executing a ADD PARTITION statement." +
+                        " This will slow down the process");
+        getParser().accepts(OPTION_DROP_WHEN_ERROR,
+                "Issue a DROP PARTITION statement when the partition is not found");
         getParser().accepts(OPTION_CREATE_ONLY,
                 "Run CREATE PARTITION only, i.e. skip the DROP PARTITION part.");
         getParser().accepts(OPTION_DROP_ONLY,
                 "Run DROP PARTITION only, i.e. skip the CREATE PARTITION part.");
 
+    }
+
+    protected String getPartitionLocation(HivePartitionDTO dto, Map<String, String> partitionSpecs, Connection connection) {
+
+        StringBuilder partitionSb = new StringBuilder("describe formatted ");
+        partitionSb.append(Helper.escapeTableName(dto.getTableName()));
+        partitionSb.append(" partition(");
+        partitionSb.append(Helper.escapePartitionSpecs(partitionSpecs));
+        partitionSb.append(")");
+
+        LOG.debug("Partition query = {}", partitionSb);
+
+        try (Statement partitionStmt = connection.createStatement()) {
+
+            ResultSet partitionRs = partitionStmt.executeQuery(partitionSb.toString());
+
+            while (partitionRs.next()) {
+                String line = partitionRs.getString(1);
+
+                if (line.startsWith("Location:")) {
+                    return partitionRs.getString(2);
+                }
+            }
+        } catch (SQLException e) {
+            LOG.warn("Got an SQLException while querying the partition {} on table {}, query was {}, {}",
+                    Helper.escapePartitionSpecs(partitionSpecs), dto.getTableName(), partitionSb.toString(), e.getMessage());
+
+        }
+        return null;
     }
 }

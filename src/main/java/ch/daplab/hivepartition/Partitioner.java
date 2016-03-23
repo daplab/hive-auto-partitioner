@@ -3,12 +3,17 @@ package ch.daplab.hivepartition;
 import ch.daplab.hivepartition.dto.Helper;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConfUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
+import java.io.Closeable;
+import java.io.IOException;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -18,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Partitioner implements AutoCloseable {
+public class Partitioner implements Closeable {
 
     private static Logger LOG = LoggerFactory.getLogger(Partitioner.class);
 
@@ -26,16 +31,16 @@ public class Partitioner implements AutoCloseable {
 
     private final HiveConf hiveConf;
     private final String jdbcUri;
-    private final Connection connection;
+    private final DataSource dataSource;
     private final boolean dryrun;
 
     private volatile int errorCount = 0;
 
-    public Partitioner(HiveConf hiveConf, String jdbcUri, boolean dryrun, Connection connection) throws Exception {
+    public Partitioner(HiveConf hiveConf, String jdbcUri, boolean dryrun, DataSource dataSource) throws Exception {
         this.hiveConf = hiveConf;
         this.jdbcUri = jdbcUri;
         this.dryrun = dryrun;
-        this.connection = connection;
+        this.dataSource = dataSource;
     }
 
     public Partitioner(Configuration conf, boolean dryrun) throws Exception {
@@ -46,12 +51,21 @@ public class Partitioner implements AutoCloseable {
         jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
 
         Class.forName(driverName);
-        connection = DriverManager.getConnection(jdbcUri, "hdfs", "");
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(jdbcUri);
+        config.setUsername("hdfs");
+        config.setPassword("");
+        config.addDataSourceProperty("cachePrepStmts", "false");
+
+        this.dataSource = new HikariDataSource(config);
 
         this.dryrun = dryrun;
     }
 
     public void create(String tableName, Map<String, String> partitionSpecs, String path) throws SQLException {
+
+        final Connection connection = dataSource.getConnection();
 
         try (Statement stmt = connection.createStatement()) {
 
@@ -72,10 +86,14 @@ public class Partitioner implements AutoCloseable {
             LOG.warn("Got a HiveSQLException", e);
             errorCount++;
             ensureLowErrorCountOrShutdown();
+        } finally {
+            connection.close();
         }
     }
 
     public void delete(String tableName, Map<String, String> partitionSpecs) throws SQLException {
+
+        final Connection connection = dataSource.getConnection();
 
         try (Statement stmt = connection.createStatement()) {
 
@@ -96,6 +114,8 @@ public class Partitioner implements AutoCloseable {
             LOG.warn("Got a HiveSQLException", e);
             errorCount++;
             ensureLowErrorCountOrShutdown();
+        } finally {
+            connection.close();
         }
     }
 
@@ -122,9 +142,11 @@ public class Partitioner implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
-        if (connection != null) {
-            connection.close();
+    public void close() throws IOException {
+        if (dataSource != null) {
+            if (dataSource instanceof Closeable) {
+                ((Closeable)dataSource).close();
+            }
         }
     }
 
