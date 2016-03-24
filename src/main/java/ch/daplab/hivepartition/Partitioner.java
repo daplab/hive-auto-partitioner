@@ -3,14 +3,13 @@ package ch.daplab.hivepartition;
 import ch.daplab.hivepartition.dto.Helper;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.conf.HiveConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -36,13 +35,7 @@ public class Partitioner implements Closeable {
     }
 
     public Partitioner(Configuration conf, boolean dryrun) throws Exception {
-
-        HiveConf hiveConf = new HiveConf();
-        hiveConf.addResource(conf);
-        URI uri = new URI(hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
-        String jdbcUri = "jdbc:hive2://" + uri.getHost() + ":" + hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_PORT) + "/default";
-
-        this.dataSource = HiveJDBCHelper.getDataSource(jdbcUri);
+        this.dataSource = HiveJDBCHelper.getDataSource(conf);
         internalDS = true;
         this.dryrun = dryrun;
     }

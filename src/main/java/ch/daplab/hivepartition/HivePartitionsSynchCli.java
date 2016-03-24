@@ -44,7 +44,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
         FileSystem fs = FileSystem.get(getConf());
 
-        final DataSource dataSource = HiveJDBCHelper.getDataSource(HiveJDBCHelper.getJdbcUri(getConf()));
+        final DataSource dataSource = HiveJDBCHelper.getDataSource(getConf());
 
         Partitioner partitioner = new Partitioner(dataSource, isDryrun());
 
@@ -70,6 +70,11 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                     while (rs.next()) {
                         String partition = rs.getString(1);
                         partitionCount++;
+
+                        if (limit != null && partitionCount > limit) {
+                            LOG.debug("Reached the limit {} of partitions to process for {}", limit, dto.getTableName());
+                            break;
+                        }
 
                         Map<String, String> partitionSpecs = new HashMap();
                         for (String spec : partition.split("/")) {

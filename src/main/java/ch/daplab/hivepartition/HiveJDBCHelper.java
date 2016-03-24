@@ -16,6 +16,11 @@ public class HiveJDBCHelper {
 
     private static String driverName = "org.apache.hive.jdbc.HiveDriver";
 
+    public static DataSource getDataSource(Configuration conf) throws ClassNotFoundException, URISyntaxException {
+        String jdbcUri = getJdbcUri(conf);
+        return getDataSource(jdbcUri);
+    }
+
     public static DataSource getDataSource(String jdbcUri) throws ClassNotFoundException {
 
         Class.forName(driverName);
