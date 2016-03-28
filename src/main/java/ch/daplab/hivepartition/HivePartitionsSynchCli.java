@@ -116,6 +116,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
                 startTime = System.currentTimeMillis();
                 partitionCount = 0;
+                int createPartitionCount = 0;
 
                 String wildcardPath = holder.getUserPattern();
                 for (String partitionName : holder.getPartitionColumns()) {
@@ -136,6 +137,9 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                     if (!partitioner.containsDisallowedPatterns(dto.getExclusions(), path) && status.isDirectory()) {
                         Map<String, String> partitionSpec = extractor.getPartitionSpec(holder, path);
                         if (partitionSpec != null) {
+
+                            partitionCount++;
+
                             if (dropBeforeCreate) {
                                 partitioner.delete(holder.getTableName(), partitionSpec);
                             }
@@ -149,7 +153,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                                 }
                             }
                             if (create) {
-                                partitionCount++;
+                                createPartitionCount++;
                                 partitioner.create(holder.getTableName(), partitionSpec, path);
                             }
                         }
@@ -157,8 +161,8 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                 }
 
                 LOG.info("[ADD PARTITION] Processed table {} in {}ms : {} " +
-                                "partitions processed",
-                        dto.getTableName(), (System.currentTimeMillis() - startTime), partitionCount);
+                                "partitions found, {} partition created (DDL statement sent)",
+                        dto.getTableName(), (System.currentTimeMillis() - startTime), partitionCount, createPartitionCount);
             }
         }
         return ReturnCode.ALL_GOOD;
