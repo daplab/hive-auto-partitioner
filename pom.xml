@@ -48,7 +48,7 @@
         <log4j.version>1.2.17</log4j.version>
         <apache.hadoop.version>2.7.1.2.3.4.0-3485</apache.hadoop.version>
         <apache.hive.version>1.2.1.2.3.4.0-3485</apache.hive.version>
-        <metrics-core.version>3.1.0</metrics-core.version>
+        <metrics.version>3.1.0</metrics.version>
         <trumpet.version>2.3.1-SNAPSHOT</trumpet.version>
         <kafka.version>0.9.0.2.3.4.0-3485</kafka.version>
         <scala.binary.version>2.10</scala.binary.version>
@@ -125,7 +125,7 @@
             </dependency>
             <dependency>
                 <groupId>org.apache.hive</groupId>
-                <artifactId>hive-client</artifactId>
+                <artifactId>hive-jdbc</artifactId>
                 <version>${apache.hive.version}</version>
             </dependency>
             <dependency>
@@ -253,6 +253,11 @@
             <groupId>com.jolbox</groupId>
             <artifactId>bonecp</artifactId>
             <version>0.7.1.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
         </dependency>
     </dependencies>
 

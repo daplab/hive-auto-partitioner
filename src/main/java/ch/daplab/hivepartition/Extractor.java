@@ -2,6 +2,7 @@ package ch.daplab.hivepartition;
 
 import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class Extractor {
 
     private boolean allFolders(Map<String, String> partitionSpec) {
         for (String value: partitionSpec.values()) {
-            if (value == null || value.contains("/")) {
+            if (StringUtils.isEmpty(value) || value.contains("/")) {
                 return false;
             }
         }
