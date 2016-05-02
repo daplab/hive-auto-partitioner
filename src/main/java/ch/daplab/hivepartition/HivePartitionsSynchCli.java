@@ -58,7 +58,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
             long startTime = System.currentTimeMillis();
 
             try (Connection connection = dataSource.getConnection(); Statement stmt = connection.createStatement()) {
-                StringBuilder sb = new StringBuilder("describe table ");
+                StringBuilder sb = new StringBuilder("describe ");
                 sb.append(Helper.escapeTableName(dto.getTableName()));
                 ResultSet rs = stmt.executeQuery(sb.toString());
                 rs.close();
