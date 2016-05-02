@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.hive.service.cli.HiveSQLException;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -56,6 +57,16 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
 
             long startTime = System.currentTimeMillis();
 
+            try (Connection connection = dataSource.getConnection(); Statement stmt = connection.createStatement()) {
+                StringBuilder sb = new StringBuilder("describe table ");
+                sb.append(Helper.escapeTableName(dto.getTableName()));
+                ResultSet rs = stmt.executeQuery(sb.toString());
+                rs.close();
+            } catch (HiveSQLException e) {
+                LOG.warn("Table " + Helper.escapeTableName(dto.getTableName()) + " does not seem to exists, skipping", e);
+                continue;
+            }
+
             int partitionCount = 0;
 
             HivePartitionHolder holder = new HivePartitionHolder(dto);
@@ -64,49 +75,50 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                 try (Connection connection = dataSource.getConnection(); Statement stmt = connection.createStatement()) {
                     StringBuilder sb = new StringBuilder("show partitions ");
                     sb.append(Helper.escapeTableName(dto.getTableName()));
-                    ResultSet rs = stmt.executeQuery(sb.toString());
-                    partitionCount = 0;
-                    int deletePartitionCount = 0;
-                    while (rs.next()) {
-                        String partition = rs.getString(1);
-                        partitionCount++;
 
-                        if (limit != null && partitionCount > limit) {
-                            LOG.debug("Reached the limit {} of partitions to process for {}", limit, dto.getTableName());
-                            break;
-                        }
+                    try (ResultSet rs = stmt.executeQuery(sb.toString())) {
+                        partitionCount = 0;
+                        int deletePartitionCount = 0;
+                        while (rs.next()) {
+                            String partition = rs.getString(1);
+                            partitionCount++;
 
-                        Map<String, String> partitionSpecs = new HashMap();
-                        for (String spec : partition.split("/")) {
-                            String[] parts = spec.split("=");
-                            partitionSpecs.put(parts[0], parts[1]);
-                        }
-
-                        String location = getPartitionLocation(dto, partitionSpecs, connection);
-
-                        if (location == null) {
-                            if (dropWhenError) {
-                                partitioner.delete(dto.getTableName(), partitionSpecs);
-                            }
-                        } else {
-
-                            Path p = new Path(location);
-                            boolean isDir = fs.isDirectory(p);
-                            if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
-                                LOG.warn("Warning: location {} seems to be outside of the table parent folder {} for table {} ({})",
-                                        p, dto.getParentPath(), dto.getTableName(), Helper.escapePartitionSpecs(partitionSpecs));
+                            if (limit != null && partitionCount > limit) {
+                                LOG.debug("Reached the limit {} of partitions to process for {}", limit, dto.getTableName());
+                                break;
                             }
 
-                            if (!isDir) {
-                                partitioner.delete(dto.getTableName(), partitionSpecs);
-                                deletePartitionCount++;
+                            Map<String, String> partitionSpecs = new HashMap();
+                            for (String spec : partition.split("/")) {
+                                String[] parts = spec.split("=");
+                                partitionSpecs.put(parts[0], parts[1]);
+                            }
+
+                            String location = getPartitionLocation(dto, partitionSpecs, connection);
+
+                            if (location == null) {
+                                if (dropWhenError) {
+                                    partitioner.delete(dto.getTableName(), partitionSpecs);
+                                }
+                            } else {
+
+                                Path p = new Path(location);
+                                boolean isDir = fs.isDirectory(p);
+                                if (!p.toUri().getPath().startsWith(dto.getParentPath())) {
+                                    LOG.warn("Warning: location {} seems to be outside of the table parent folder {} for table {} ({})",
+                                            p, dto.getParentPath(), dto.getTableName(), Helper.escapePartitionSpecs(partitionSpecs));
+                                }
+
+                                if (!isDir) {
+                                    partitioner.delete(dto.getTableName(), partitionSpecs);
+                                    deletePartitionCount++;
+                                }
                             }
                         }
+                        LOG.info("[DROP PARTITION] Processed table {} in {}ms : {}" +
+                                        " partitions found, {} partitions deleted",
+                                dto.getTableName(), (System.currentTimeMillis() - startTime), partitionCount, deletePartitionCount);
                     }
-                    LOG.info("[DROP PARTITION] Processed table {} in {}ms : {}" +
-                                    " partitions found, {} partitions deleted",
-                            dto.getTableName(), (System.currentTimeMillis() - startTime), partitionCount, deletePartitionCount);
-
                 } catch (org.apache.hive.service.cli.HiveSQLException e) {
                     LOG.warn("Got a HiveSQLException after " + partitionCount + " partitions", e);
                 }
