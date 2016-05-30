@@ -62,8 +62,13 @@ public class Partitioner implements Closeable {
                 break;
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException", e);
-                errorCount++;
-                if (++retryCount == maxTries) throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                if (e.getMessage().contains("SemanticException [Error 10248]")) {
+                    // ignore this exception, most likely a string to int conversion failure.
+                } else {
+                    errorCount++;
+                    if (++retryCount == maxTries)
+                        throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                }
             }
         }
     }

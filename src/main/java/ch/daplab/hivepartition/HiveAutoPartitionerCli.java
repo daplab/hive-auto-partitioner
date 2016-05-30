@@ -12,6 +12,8 @@ import org.apache.hadoop.util.ToolRunner;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import rx.Observable;
+import rx.Subscription;
+import rx.functions.Action1;
 import rx.observables.ConnectableObservable;
 
 import java.io.File;
@@ -50,7 +52,7 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
             trie.addOrAppendPath(holder.getParentPath(), holder);
         }
 
-        InfiniteTrumpetEventStreamer trumpetEventStreamer = new InfiniteTrumpetEventStreamer(getCuratorFrameworkKafka(),
+        final InfiniteTrumpetEventStreamer trumpetEventStreamer = new InfiniteTrumpetEventStreamer(getCuratorFrameworkKafka(),
                 getTopic(), HiveAutoPartitionerCli.class.getCanonicalName() + "-" + getTopic());
 
         Partitioner partitioner = new Partitioner(getConf(), false);
@@ -64,9 +66,20 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
         connectableObservable.subscribe(createPartitionObserver);
         connectableObservable.subscribe(deletePartitionObserver);
 
+        connectableObservable.doOnError(new Action1<Throwable>() {
+            @Override
+            public void call(Throwable throwable) {
+                LOG.error("Got an irrecoverable exception, shutting down.", throwable);
+
+                // TODO: close and cleanup?
+
+                Runtime.getRuntime().exit(2);
+            }
+        });
+
         connectableObservable.connect();
 
-        System.err.println("Do I see this line?");
+        System.err.println("You should never see this line :)");
 
         return 0;
     }

@@ -83,7 +83,7 @@ public class HivePartitionsSynchCli extends SimpleAbstractAppLauncher {
                             String partition = rs.getString(1);
                             partitionCount++;
 
-                            if (limit != null && partitionCount > limit) {
+                            if (limit != null && partitionCount >= limit) {
                                 LOG.debug("Reached the limit {} of partitions to process for {}", limit, dto.getTableName());
                                 break;
                             }
