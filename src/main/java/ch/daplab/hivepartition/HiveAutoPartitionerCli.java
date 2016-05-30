@@ -2,8 +2,10 @@ package ch.daplab.hivepartition;
 
 import ch.daplab.hivepartition.dto.HivePartitionDTO;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
+import ch.daplab.hivepartition.metrics.MetricsHolder;
 import ch.daplab.hivepartition.rx.CreatePartitionObserver;
 import ch.daplab.hivepartition.rx.DeletePartitionObserver;
+import com.codahale.metrics.JmxReporter;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.AbstractAppLauncher;
 import com.verisign.vscc.hdfs.trumpet.client.InfiniteTrumpetEventStreamer;
@@ -76,6 +78,9 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
                 Runtime.getRuntime().exit(2);
             }
         });
+
+        final JmxReporter reporter = JmxReporter.forRegistry(MetricsHolder.getMetrics()).build();
+        reporter.start();
 
         connectableObservable.connect();
 

@@ -1,6 +1,7 @@
 package ch.daplab.hivepartition;
 
 import ch.daplab.hivepartition.dto.Helper;
+import ch.daplab.hivepartition.metrics.MetricsHolder;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -62,6 +63,7 @@ public class Partitioner implements Closeable {
                 break;
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException", e);
+                MetricsHolder.getExceptionMeter().mark();
                 if (e.getMessage().contains("SemanticException [Error 10248]")) {
                     // ignore this exception, most likely a string to int conversion failure.
                 } else {
@@ -95,8 +97,14 @@ public class Partitioner implements Closeable {
                 break;
             } catch (org.apache.hive.service.cli.HiveSQLException e) {
                 LOG.warn("Got a HiveSQLException", e);
-                errorCount++;
-                if (++retryCount == maxTries) throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                MetricsHolder.getExceptionMeter().mark();
+                if (e.getMessage().contains("SemanticException [Error 10248]")) {
+                    // ignore this exception, most likely a string to int conversion failure.
+                } else {
+                    errorCount++;
+                    if (++retryCount == maxTries)
+                        throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                }
             }
         }
     }
