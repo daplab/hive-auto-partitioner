@@ -63,6 +63,22 @@ export HADOOP_CLASSPATH="$OUR_CLASSPATH:/etc/hive/conf"
 export HADOOP_OPTS="${JAVA_OPTS} ${HADOOP_OPTS}"
 export YARN_OPTS="${JAVA_OPTS} ${HADOOP_OPTS}"
 
+#
+# Setup JMX.
+# More details here: http://docs.oracle.com/javase/8/docs/technotes/guides/management/agent.html#gdevf
+#
+
+if [ -z $JMX_PORT ]
+then
+  JMX_PORT=7124
+fi
+
+export YARN_OPTS="${YARN_OPTS} -Dcom.sun.management.jmxremote.port=$JMX_PORT"
+export YARN_OPTS="${YARN_OPTS} -Dcom.sun.management.jmxremote.rmi.port=$JMX_PORT"
+export YARN_OPTS="${YARN_OPTS} -Dcom.sun.management.jmxremote.ssl=false"
+export YARN_OPTS="${YARN_OPTS} -Dcom.sun.management.jmxremote.authenticate=false"
+export YARN_OPTS="${YARN_OPTS} -Djava.rmi.server.hostname=localhost"
+
 command="yarn jar $LIBDIR/hive-auto-partitioner.jar ch.daplab.hivepartition.HiveAutoPartitionerCli"
 
 echo $command $@
