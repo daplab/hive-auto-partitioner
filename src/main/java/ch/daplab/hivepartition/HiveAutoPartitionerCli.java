@@ -5,6 +5,7 @@ import ch.daplab.hivepartition.dto.HivePartitionHolder;
 import ch.daplab.hivepartition.metrics.MetricsHolder;
 import ch.daplab.hivepartition.rx.CreatePartitionObserver;
 import ch.daplab.hivepartition.rx.DeletePartitionObserver;
+import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.JmxReporter;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.AbstractAppLauncher;
@@ -15,12 +16,15 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import rx.Observable;
 import rx.Subscription;
+import rx.functions.Action0;
 import rx.functions.Action1;
 import rx.observables.ConnectableObservable;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class HiveAutoPartitionerCli extends AbstractAppLauncher {
 
@@ -59,32 +63,62 @@ public class HiveAutoPartitionerCli extends AbstractAppLauncher {
 
         Partitioner partitioner = new Partitioner(getConf(), false);
 
-        CreatePartitionObserver createPartitionObserver = new CreatePartitionObserver(trie, partitioner);
-        DeletePartitionObserver deletePartitionObserver = new DeletePartitionObserver(trie, partitioner);
+        CreatePartitionObserver createPartitionObserver =
+                new CreatePartitionObserver(trie, partitioner);
+        DeletePartitionObserver deletePartitionObserver =
+                new DeletePartitionObserver(trie, partitioner);
 
-        ConnectableObservable<Map<String, Object>> connectableObservable = Observable
+        final ConnectableObservable<Map<String, Object>> connectableObservable = Observable
                 .from(trumpetEventStreamer).publish();
 
-        connectableObservable.subscribe(createPartitionObserver);
-        connectableObservable.subscribe(deletePartitionObserver);
+        final JmxReporter jmxReporter = JmxReporter.forRegistry(MetricsHolder.getMetrics()).build();
+        jmxReporter.start();
 
-        connectableObservable.doOnError(new Action1<Throwable>() {
+        final ConsoleReporter consoleReporter = ConsoleReporter.forRegistry(MetricsHolder.getMetrics()).build();
+        consoleReporter.start(5, TimeUnit.MINUTES);
+
+        final AtomicReference<Subscription> createPartitionSubscriptionRef =
+                new AtomicReference<>(null);
+        final AtomicReference<Subscription> deletePartitionSubscriptionRef =
+                new AtomicReference<>(null);
+
+        Action1 onError = new Action1<Throwable>() {
             @Override
             public void call(Throwable throwable) {
                 LOG.error("Got an irrecoverable exception, shutting down.", throwable);
 
-                // TODO: close and cleanup?
+                jmxReporter.stop();
+                consoleReporter.stop();
+
+                if (createPartitionSubscriptionRef.get() != null) {
+                    createPartitionSubscriptionRef.get().unsubscribe();
+                }
+
+                if (deletePartitionSubscriptionRef.get() != null) {
+                    deletePartitionSubscriptionRef.get().unsubscribe();
+                }
 
                 Runtime.getRuntime().exit(2);
             }
-        });
+        };
 
-        final JmxReporter reporter = JmxReporter.forRegistry(MetricsHolder.getMetrics()).build();
-        reporter.start();
+        Action0 onCompleted = new Action0() {
+            @Override
+            public void call() {
+
+            }
+        };
+
+        final Subscription createPartitionSubscription =
+                connectableObservable.subscribe(createPartitionObserver, onError, onCompleted);
+        createPartitionSubscriptionRef.set(createPartitionSubscription);
+        final Subscription deletePartitionSubscription =
+                connectableObservable.subscribe(deletePartitionObserver, onError, onCompleted);
+        deletePartitionSubscriptionRef.set(deletePartitionSubscription);
 
         connectableObservable.connect();
 
-        System.err.println("You should never see this line :)");
+        System.err.println("Let me know if you see this line :)");
 
         return 0;
     }

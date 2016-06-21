@@ -66,10 +66,14 @@ public class Partitioner implements Closeable {
                 MetricsHolder.getExceptionMeter().mark();
                 if (e.getMessage().contains("SemanticException [Error 10248]")) {
                     // ignore this exception, most likely a string to int conversion failure.
+                } else if (e.getMessage().contains("SemanticException [Error 10001]: Table not found ")) {
+                    // ignore this exception, most likely an event on a table not created yet.
                 } else {
                     errorCount++;
-                    if (++retryCount == maxTries)
+                    if (++retryCount >= maxTries) {
+                        LOG.error("Got {} exception in a raw, throwing it further",maxTries, e);
                         throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                    }
                 }
             }
         }
@@ -100,10 +104,14 @@ public class Partitioner implements Closeable {
                 MetricsHolder.getExceptionMeter().mark();
                 if (e.getMessage().contains("SemanticException [Error 10248]")) {
                     // ignore this exception, most likely a string to int conversion failure.
+                } else if (e.getMessage().contains("SemanticException [Error 10001]: Table not found ")) {
+                    // ignore this exception, most likely an event on a table not created yet.
                 } else {
                     errorCount++;
-                    if (++retryCount == maxTries)
+                    if (++retryCount == maxTries) {
+                        LOG.error("Got {} exception in a raw, throwing it further",maxTries, e);
                         throw new RuntimeException("Got a HiveSQLException " + retryCount + " times in a row, aborting.", e);
+                    }
                 }
             }
         }

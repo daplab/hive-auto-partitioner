@@ -45,7 +45,7 @@ fi
 #JAVA_OPTS="-XX:+HeapDumpOnOutOfMemoryError -verbose:gc"
 
 # Start up size for memory allocation pool for java VM.
-MS=512m
+MS=128m
 
 # Max size of memory allocation pool for java VM.
 MX=2048m
