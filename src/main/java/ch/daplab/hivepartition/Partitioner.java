@@ -68,6 +68,8 @@ public class Partitioner implements Closeable {
                     // ignore this exception, most likely a string to int conversion failure.
                 } else if (e.getMessage().contains("SemanticException [Error 10001]: Table not found ")) {
                     // ignore this exception, most likely an event on a table not created yet.
+                } else if (e.getMessage().contains("SemanticException Unexpected unknown partitions ")) {
+                    // ignore this exception, most likely temp folders we're not able to parse
                 } else {
                     errorCount++;
                     if (++retryCount >= maxTries) {
@@ -106,6 +108,8 @@ public class Partitioner implements Closeable {
                     // ignore this exception, most likely a string to int conversion failure.
                 } else if (e.getMessage().contains("SemanticException [Error 10001]: Table not found ")) {
                     // ignore this exception, most likely an event on a table not created yet.
+                } else if (e.getMessage().contains("SemanticException Unexpected unknown partitions ")) {
+                    // ignore this exception, most likely temp folders we're not able to parse
                 } else {
                     errorCount++;
                     if (++retryCount == maxTries) {
