@@ -4,6 +4,8 @@ import ch.daplab.hivepartition.Extractor;
 import ch.daplab.hivepartition.Partitioner;
 import ch.daplab.hivepartition.dto.HivePartitionHolder;
 import ch.daplab.hivepartition.metrics.MetricsHolder;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.verisign.utils.MultiPathTrie;
 import com.verisign.vscc.hdfs.trumpet.dto.EventAndTxId;
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import rx.functions.Action1;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class DeletePartitionObserver implements Action1<Map<String, Object>> {
 
@@ -22,6 +25,12 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
 
     private final Extractor extractor = new Extractor();
     private final Partitioner partitioner;
+
+    Cache<String, Boolean> recentlyDeletedPath = CacheBuilder.newBuilder()
+            .concurrencyLevel(1)
+            .maximumSize(1000)
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .build();
 
     public DeletePartitionObserver(MultiPathTrie<HivePartitionHolder> hivePartitionsTrie, Partitioner partitioner) {
         this.hivePartitionsTrie = hivePartitionsTrie;
@@ -54,6 +63,11 @@ public class DeletePartitionObserver implements Action1<Map<String, Object>> {
                 return;
         }
 
+        if (recentlyDeletedPath.getIfPresent(path) != null) {
+            LOG.trace("This path {} has already been processed recently", path);
+        } else {
+            recentlyDeletedPath.put(path, Boolean.TRUE);
+        }
         LOG.trace("Processing {}", event);
 
         final Collection<Map.Entry<String, Collection<HivePartitionHolder>>> allMatchingDefinitions =
